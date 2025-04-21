@@ -59,16 +59,13 @@ class MedicinesDFCleaner:
                     new_col = col[:-8].rstrip('_')
                     columns_to_rename[col] = new_col
             df.rename(columns=columns_to_rename, inplace=True)
-
+            
     @staticmethod
-    def ajouter_colonne_mois(dfs):
-        print("📆 Transformation des données en format long avec colonnes mois/année...")
-        results = []
-        month_pattern = re.compile(r'(0[1-9]|1[0-2])')
-        year_pattern = re.compile(r'(20\d{2})')
+    def ajouter_colonne_mois(dataframe):
+        all_data = []
 
-        for dfind in dfs:
-            target_columns = dfind.columns[3:]
+        for dfind in dataframe:
+            target_columns = dfind.columns[3:]  # On garde les 3 premières comme identifiants
             df_long = dfind.melt(
                 id_vars=dfind.columns[:3],
                 value_vars=target_columns,
@@ -76,22 +73,26 @@ class MedicinesDFCleaner:
                 value_name='valeur'
             )
 
-            df_long['month'] = df_long['nom_colonne'].str.extract(month_pattern)
-            df_long['year'] = df_long['nom_colonne'].str.extract(year_pattern)
+            # Extraire la date au format 'YYYY-MM' et convertir en datetime
+            df_long['date'] = df_long['nom_colonne'].str.extract(r'(20\d{2}-[01]\d)$')[0]
+            df_long['date'] = pd.to_datetime(df_long['date'], format='%Y-%m', errors='coerce')
 
-            df_long['date'] = pd.to_datetime(
-                df_long['year'] + '-' + df_long['month'] + '-01',
-                format='%Y-%m-%d',
-                errors='coerce'
-            )
+            # 2. Extraire le type d'indicateur
+            df_long['type'] = df_long['nom_colonne'].str.extract(
+                r'^(Base_de_remboursement|Nombre_de_boites_remboursées|Montant_remboursé)'
+            )[0]
 
-            results.append(df_long)
-        return results
+            all_data.append(df_long)
+
+        # On concatène toutes les années ensemble
+        full_df = pd.concat(all_data, ignore_index=True)
+
+        return full_df
 
     @staticmethod
-    def drop_nan(dfs):
+    def drop_nan(df):
         print("🚫 Suppression des lignes sans date ou valeur...")
-        return [df.dropna(subset=['date', 'valeur']) for df in dfs]
+        return df.dropna(subset=['date', 'valeur'])
 
     def run(self):
         merged_data_by_year = {}
@@ -124,8 +125,24 @@ class MedicinesDFCleaner:
         dfs = self.drop_nan(dfs)
 
         print("📊 Fusion des données finales...")
-        final_df = pd.concat(dfs, ignore_index=True)
+        final_df = dfs
+
+        # 🧹 Nettoyage de la colonne inutile
+        final_df.drop(columns=['nom_colonne'], inplace=True, errors='ignore')
+
+        # 📊 Pivot final pour agréger les indicateurs
+        final_df = final_df.pivot_table(
+            index=['Code_ATC2', 'Libelle_ATC2', 'Taux_de_remboursement', 'date'],
+            columns='type',
+            values='valeur',
+            aggfunc='sum'
+        ).reset_index()
+
+        # 🔠 Réorganiser les colonnes (optionnel)
+        final_df.columns.name = None  # Supprimer le nom de l’index des colonnes
+
         return final_df
+    
 
 if __name__ == "__main__":
     cleaner = MedicinesDFCleaner(
