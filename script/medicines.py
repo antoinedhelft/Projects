@@ -1,11 +1,6 @@
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
-import duckdb as db
-import re
-import os
 from pathlib import Path
-from tqdm import tqdm  # ⏳ Progress bar
+from tqdm import tqdm  # Progress bar
 
 # Gestion dynamique des chemins
 current_dir = Path(__file__).resolve().parent
@@ -19,7 +14,7 @@ class MedicinesDFCleaner:
 
     @staticmethod
     def round_number(df, decimals=2):
-        print("🔄 Arrondi des colonnes numériques...")
+        print("Rounding numeric columns")
         numeric_cols = df.select_dtypes(include='number').columns
         for col in numeric_cols:
             df[col] = df[col].round(decimals)
@@ -27,20 +22,20 @@ class MedicinesDFCleaner:
 
     @staticmethod
     def replace_column_name(df):
-        print("🔠 Nettoyage des noms de colonnes...")
+        print("Cleaning column names")
         df.columns = [col.replace(' ', '_') for col in df.columns]
         return df
 
     @staticmethod
     def drop_columns(df):
-        print("🗑️ Suppression des colonnes inutiles...")
+        print("Removed unnecessary columns")
         col_to_drop = ['Code_ATC2_y', 'Libellé_ATC2_y', 'Taux_de_remboursement_y']
         df.drop(columns=col_to_drop, inplace=True, errors='ignore')
         return df
 
     @staticmethod
     def rename_column(df, suffix):
-        print(f"✏️  Renommage des colonnes {suffix.upper()}...")
+        print(f"Renaming columns {suffix.upper()}...")
 
         col_to_rename = {
             f'Code_{suffix.upper()}_x': f'Code_{suffix.upper()}',
@@ -52,7 +47,7 @@ class MedicinesDFCleaner:
 
     @staticmethod
     def remove_end_columns(dfs):
-        print("🔧 Nettoyage des noms de colonnes suffixées '_ATC2'...")
+        print("Cleaning suffixed column names '_ATC2'...")
         for df in dfs:
             columns_to_rename = {}
             for col in df.columns[5:]:
@@ -84,7 +79,7 @@ class MedicinesDFCleaner:
 
     @staticmethod
     def drop_nan(df):
-        print("🚫 Suppression des lignes sans date ou valeur...")
+        print("Removing rows without value or date...")
         return df.dropna(subset=['date', 'valeur'])
 
     def run(self, suffixes=None):
@@ -93,7 +88,7 @@ class MedicinesDFCleaner:
 
         merged_data_by_sheet = {suffix: {} for suffix in suffixes}
 
-        print(f"📥 Chargement des fichiers Excel pour les années : {self.years}")
+        print(f"Loading Excel files for years : {self.years}")
         for year in tqdm(self.years, desc="Traitement par année"):
             file_head = self.base_path / f"{year}_head.xlsx"
             file_tail = self.base_path / f"{year}_tail.xlsx"
@@ -104,7 +99,7 @@ class MedicinesDFCleaner:
                     df_head = pd.read_excel(file_head, sheet_name=sheet_name, skiprows=5)
                     df_tail = pd.read_excel(file_tail, sheet_name=sheet_name, skiprows=5)
                 except Exception as e:
-                    print(f"⚠️ Erreur lors de la lecture de la feuille {sheet_name}: {e}")
+                    print(f"Error reading sheet {sheet_name}: {e}")
                     continue
 
                 merged_df = pd.merge(df_head, df_tail, left_index=True, right_index=True)
@@ -125,7 +120,7 @@ class MedicinesDFCleaner:
             dfs = self.ajouter_colonne_mois(dfs)
             dfs = self.drop_nan(dfs)
 
-            print(f"📊 Fusion des données finales pour '{suffix}'...")
+            print(f"Final data merging for '{suffix}'...")
             full_df = dfs.drop(columns=['nom_colonne'], errors='ignore')
 
             code_col = f"Code_{suffix.upper()}"
@@ -155,6 +150,6 @@ if __name__ == "__main__":
     for suffix, df in final_dfs.items():
         export_path = processed_dir / f"AMELI_{suffix.upper()}_2021_to_2024.csv"
         df.to_csv(export_path, index=False)
-        print(f"\n✅ Fichier exporté pour {suffix} : {export_path}")
-        print("🔍 Aperçu :")
+        print(f"\n Exported file for {suffix} : {export_path}")
+        print("Preview :")
         print(df.head(), "\n")
