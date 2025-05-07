@@ -77,6 +77,28 @@ class MedicinesDFCleaner:
 
         return pd.concat(all_data, ignore_index=True)
 
+    def filter_atc_by_length(self, df, suffix):
+    
+        expected_length = {
+            "atc2": 3,
+            "atc3": 4,
+            "atc4": 5,
+            "atc5": 7
+        }
+
+    # Vérification que le suffixe est valide
+        valid_len = expected_length.get(suffix.lower())
+        if valid_len is None:
+            raise ValueError(f"Suffx '{suffix}' non reconnu (doit être 'atc2', 'atc3', 'atc4', ou 'atc5').")
+
+    # Définir le nom de la colonne à partir du suffixe
+        column_name = f"Code_{suffix.upper()}"
+
+    # Filtrer les lignes où la longueur du code ATC correspond à celle attendue
+        df[column_name] = df[column_name].astype(str).str.strip()
+        return df[df[column_name].str.len() == valid_len]
+        
+
     @staticmethod
     def drop_nan(df):
         print("Removing rows without value or date...")
@@ -110,6 +132,10 @@ class MedicinesDFCleaner:
 
                 merged_data_by_sheet[suffix][year] = merged_df
 
+                merged_df = self.filter_atc_by_length(merged_df, suffix)
+
+                merged_data_by_sheet[suffix][year] = merged_df
+
         final_dfs = {}
         for suffix, yearly_data in merged_data_by_sheet.items():
             dfs = list(yearly_data.values())
@@ -125,7 +151,7 @@ class MedicinesDFCleaner:
 
             code_col = f"Code_{suffix.upper()}"
             libelle_col = f"Libelle_{suffix.upper()}"
-            taux_col = "Taux_de_remboursement"  # ça ne change pas
+            taux_col = "Taux_de_remboursement" 
 
             pivot_df = full_df.pivot_table(
                 index=[code_col, libelle_col, taux_col, 'date'],
@@ -148,7 +174,7 @@ if __name__ == "__main__":
     final_dfs = cleaner.run(suffixes=["atc2", "atc3", "atc4", "atc5"])
 
     for suffix, df in final_dfs.items():
-        export_path = processed_dir / f"AMELI_{suffix.upper()}_2021_to_2024.csv"
+        export_path = processed_dir / f"AMELI_{suffix.upper()}_2021_to_2024_bis.csv"
         df.to_csv(export_path, index=False)
         print(f"\n Exported file for {suffix} : {export_path}")
         print("Preview :")
