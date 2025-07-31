@@ -28,5 +28,5 @@ Je suis aussi passionné par :
 
 ---
 
-📫 **Restons en contact**  
+📫 **Entrons en contact**  
 🔗 [LinkedIn – Antoine Dhelft](https://www.linkedin.com/in/dhelftantoine)
