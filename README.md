@@ -8,7 +8,7 @@ Pharmacien de formation, j’ai choisi de me reconvertir dans la **data engineer
 
 ### 🔧 Compétences principales
 - 🐍 Python (Pandas, NumPy, Matplotlib…)
-- 🛢️ SQL (requêtes complexes, jointures, nettoyage…)
+- 🛢️ SQL 
 - 📊 Power BI (dashboards interactifs et rapports dynamiques)
 
 ---
