@@ -2,7 +2,7 @@ import streamlit as st
 
 
 def render():
-    st.title("Analyse")
+    st.title("Car-pollution")
     st.markdown("---")
     st.info("Ajoutez ici vos graphiques, KPIs et analyses.")
 

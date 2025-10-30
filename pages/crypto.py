@@ -12,5 +12,5 @@ def render():
     )
 
     with st.expander("Crédits / Contact"):
-        st.write("Auteur: Vous")
-        st.write("Contact: votre.email@example.com")
+        st.write("Auteur: Antoine DHELFT")
+

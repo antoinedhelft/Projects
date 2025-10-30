@@ -9,22 +9,24 @@ st.set_page_config(
 # --- Sidebar navigation ---
 st.sidebar.title("Navigation")
 
-# Lazy imports to avoid circular issues if Streamlit watches files
+# Importations différées pour éviter les problèmes de boucle si Streamlit surveille les fichiers
 from pages.accueil import render as render_accueil  # type: ignore
-from pages.analyse import render as render_analyse  # type: ignore
-from pages.donnees import render as render_donnees  # type: ignore
-from pages.a_propos import render as render_a_propos  # type: ignore
+from pages.medicaments import render as render_medicaments  # type: ignore
+from pages.crypto import render as render_crypto  # type: ignore
+from pages.car-pollution import render as render_car_pollution  # type: ignore
+from pages.trail import render as render_trail
 
 PAGES = {
     "Accueil": render_accueil,
-    "Analyse": render_analyse,
-    "Données": render_donnees,
-    "À propos": render_a_propos,
+    "Médicaments": render_medicaments,
+    "Crypto": render_crypto,
+    "Pollution VL": render_car_pollution,
+    "Trail": render_trail
 }
 
 selection = st.sidebar.radio("Aller à", list(PAGES.keys()), index=0)
 
-# Optional: keep selection in URL if supported (best-effort, non-fatal)
+# Conserver la sélection dans l’URL si elle est prise en charge (au mieux, sans erreur fatale)
 try:
     # Newer Streamlit versions
     st.query_params["page"] = selection

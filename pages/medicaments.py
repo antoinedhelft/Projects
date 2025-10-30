@@ -2,7 +2,7 @@ import streamlit as st
 
 
 def render():
-    st.title("Données")
+    st.title("Médicaments")
     st.markdown("---")
     st.write("Chargez un fichier CSV pour en afficher un aperçu.")
 
