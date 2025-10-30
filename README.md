@@ -1,14 +1,14 @@
 ## 👋 Salut, moi c’est Antoine !
 
-Pharmacien de formation, j’ai choisi de me reconvertir dans la **data analyse**. Aujourd’hui, j’utilise des outils comme **Python**, **SQL** et **Power BI** pour explorer, visualiser et valoriser les données.
+Pharmacien de formation, j’ai choisi de me reconvertir dans la **data engineering**. Aujourd’hui, j’utilise des outils comme **Python**, **SQL**, **Snowflake**, **DBT**, **PySpark** et **Power BI** pour explorer, visualiser et valoriser les données.
 
-🎯 **Objectif actuel** : Je suis à la recherche d’opportunités professionnelles en tant que **data analyste** — N’hésitez pas à regarder mes projets et à me contacter si mon profil vous intéresse !
+🎯 **Objectif actuel** : Je suis à la recherche d’opportunités professionnelles en tant que **data engineer** — N’hésitez pas à regarder mes projets et à me contacter si mon profil vous intéresse !
 
 ---
 
 ### 🔧 Compétences principales
 - 🐍 Python (Pandas, NumPy, Matplotlib…)
-- 🛢️ SQL (requêtes complexes, jointures, nettoyage…)
+- 🛢️ SQL 
 - 📊 Power BI (dashboards interactifs et rapports dynamiques)
 
 ---
@@ -28,5 +28,5 @@ Je suis aussi passionné par :
 
 ---
 
-📫 **Restons en contact**  
+📫 **Entrons en contact**  
 🔗 [LinkedIn – Antoine Dhelft](https://www.linkedin.com/in/dhelftantoine)
