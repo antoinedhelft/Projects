@@ -51,15 +51,34 @@ def render():
     st.markdown("---")
     st.subheader("Moyennes par énergie: PGR_cumul vs Essai_Nox")
 
+    # 1) Essayer d'afficher l'image exportée depuis le notebook
+    png_path = CLEAN.parent / "plots" / "PGR_cumul.png"
+    if png_path.exists():
+        st.image(str(png_path), caption="Moyennes par énergie: PGR_cumul vs Essai_Nox", width=640)
+        return
+
+    # 2) Sinon, bascule en mode fallback (recalcul rapide du plot)
     required_cols = {"Energie", "PGR_cumul", "Essai_Nox"}
     if not required_cols.issubset(df.columns):
         st.warning("Colonnes attendues manquantes pour le graphique (Energie, PGR_cumul, Essai_Nox).")
         return
 
+    import seaborn as sns  # lazy import si fallback nécessaire
+    sns.set_theme(style="whitegrid", context="paper", font_scale=0.8)
+    plt.rcParams.update({
+        "figure.dpi": 110,
+        "axes.titlesize": 12,
+        "axes.labelsize": 10,
+        "xtick.labelsize": 9,
+        "ytick.labelsize": 9,
+        "legend.fontsize": 9,
+        "legend.title_fontsize": 10,
+    })
+
     mean_point = df.groupby("Energie", as_index=False)[["PGR_cumul", "Essai_Nox"]].mean()
     energie_counts = df["Energie"].value_counts()
 
-    fig, ax = plt.subplots(figsize=(5, 3), dpi=110)  # plus compact
+    fig, ax = plt.subplots(figsize=(5, 3), dpi=110)
     sns.scatterplot(data=mean_point, x="PGR_cumul", y="Essai_Nox", hue="Energie", marker="X", s=70, ax=ax)
     ax.set_xlabel("PGR cumul (CO2 + 25*HC)")
     ax.set_ylabel("Essai NOx")
@@ -70,16 +89,8 @@ def render():
         try:
             px = mean_point.loc[mean_point["Energie"] == energie, "PGR_cumul"].values[0]
             py = mean_point.loc[mean_point["Energie"] == energie, "Essai_Nox"].values[0]
-            ax.annotate(
-                str(count),
-                xy=(px, py),
-                xytext=(4, -10),
-                textcoords="offset points",
-                fontsize=8,
-                alpha=0.8,
-            )
+            ax.annotate(str(count), xy=(px, py), xytext=(4, -10), textcoords="offset points", fontsize=8, alpha=0.8)
         except Exception:
             pass
 
-    # Important: use_container_width=False pour respecter la taille fig (évite l'étirement pleine largeur)
     st.pyplot(fig, use_container_width=False, clear_figure=True)
