@@ -3,7 +3,7 @@ from pathlib import Path
 
 
 def render():
-    st.title("Car-pollution")
+    st.title("Pollution VL")
     st.markdown("---")
     st.caption("Préparer les données depuis le CSV ADEME, puis explorer quelques indicateurs.")
 
