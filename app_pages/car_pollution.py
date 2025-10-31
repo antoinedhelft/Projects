@@ -62,4 +62,5 @@ def render():
         except Exception:
             pass
 
-    st.pyplot(fig, clear_figure=True)
+    # Important: use_container_width=False pour respecter la taille fig (évite l'étirement pleine largeur)
+    st.pyplot(fig, use_container_width=False, clear_figure=True)
