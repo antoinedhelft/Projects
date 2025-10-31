@@ -7,6 +7,21 @@ def render():
     st.markdown("---")
     st.caption("Exploration des indicateurs à partir du jeu de données déjà préparé.")
 
+    st.subheader("Contexte du projet")
+    st.markdown("""
+    Ce projet à pour objectif d'étudier les émissions des véhicules légers (VL) en France, en se basant sur un dataset fourni par l'ademe et préparé auparavant.
+    Le dataset fourni des informations sur les caractéristiques des véhicules ainsi que leurs émissions à différentes vitesses et lors d'un essai routier. '
+    C'est ce que nous allons utiliser pour analyser le potentiel de réchauffement global (PGR) des véhicules par type de moteur. 
+
+    Il est à noter que cet ensemble de données ne couvre pas tous les aspects des émissions de véhicules (uniquement ceux mesurés et produits par le moteur). 
+    """)
+    st.markdown("Données brutes accessibles ici : (https://www.data.gouv.fr/fr/datasets/r/3b3cce6b-073d-4b4c-a68c-2744c92f4045)!")
+    st.markdown("les gazs à effets de serres : (https://jancovici.com/changement-climatique/gaz-a-effet-de-serre-et-cycle-du-carbone/quels-sont-les-gaz-a-effet-de-serre-quels-sont-leurs-contribution-a-leffet-de-serre/)")
+    st.markdown("(https://www.geo.fr/environnement/hydrocarbure-definition-classification-et-utilisation-193625)")
+
+    st.markdown("Les polluants de l'air : (https://www.ecologie.gouv.fr/pollution-lair-origines-situation-et-impacts)")
+
+
     # Imports pour les graphiques
     try:
         import pandas as pd
@@ -51,11 +66,91 @@ def render():
     st.markdown("---")
     st.subheader("Moyennes par énergie: PGR_cumul vs Essai_Nox")
 
-    # 1) Affichage l'image exportée depuis le notebook
+    # 1) Plot du cumule PGR vs NOx par type d'énergie
 
     pgr_path = CLEAN.parent / "plots" / "PGR_cumul.png"
     col_l, col_c, col_r = st.columns([1, 2, 1])
     with col_c:
         st.image(str(pgr_path), width=800)
+
+    st.markdown("Nous pouvons observer que les meilleures combinaisons de NOX et de PGR concernent les véhicules hybride/essence, hybride rechargeable essence, essence et diesel hybride rechargeable.")
+    # 2) Plot du nombre de véhicules vendus par marque et énergie les moins polluantes
+
+    st.markdown("---")
+    st.subheader("Nombre de véhicules par marque (par type d'énergie)")
+
+    # Vérifs colonnes
+    needed_cols = {"Energie", "Marque"}
+    if not needed_cols.issubset(df.columns):
+        st.warning("Colonnes manquantes pour ces graphiques (Energie, Marque).")
+        return
+
+    # Sélections par type d'énergie (mêmes libellés que le notebook)
+    select_HR = df[df["Energie"] == "ELEC+ESSENC_HR"]
+    select_HNR = df[df["Energie"] == "ESS+ELEC_HNR"]
+    select_ESSENCE = df[df["Energie"] == "ESSENCE"]
+    select_GAZOLE_HR = df[df["Energie"] == "ELEC+GAZOLE_HR"]
+
+    # Option pour limiter le nombre de marques visibles (pour éviter la foule)
+    top_n = st.slider("Afficher les N marques les plus fréquentes", 5, 30, 15, 1)
+
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+
+    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(12, 8), dpi=110)
+    sns.set_theme(style='whitegrid')
+
+    # Panel 1: Hybride rechargeable essence
+    if not select_HR.empty:
+        orderHR = select_HR["Marque"].value_counts().head(top_n).index
+        dataHR = select_HR[select_HR["Marque"].isin(orderHR)]
+        sns.countplot(data=dataHR, x='Marque', order=orderHR, hue='Marque', palette='pastel', legend=False, ax=axes[0,0])
+        axes[0,0].tick_params(axis='x', rotation=75)
+        axes[0,0].set_ylabel('Count of car sold', fontsize=11)
+        axes[0,0].set_xlabel('Mark', fontsize=11)
+        axes[0,0].set_title("Number of Petrol Plug-In Hybrid vehicles by Mark", fontsize=12)
+    else:
+        axes[0,0].set_visible(False)
+
+    # Panel 2: Hybride non rechargeable essence
+    if not select_HNR.empty:
+        orderHNR = select_HNR["Marque"].value_counts().head(top_n).index
+        dataHNR = select_HNR[select_HNR["Marque"].isin(orderHNR)]
+        sns.countplot(data=dataHNR, x='Marque', order=orderHNR, hue='Marque', palette='pastel', legend=False, ax=axes[0,1])
+        axes[0,1].tick_params(axis='x', rotation=75)
+        axes[0,1].set_ylabel('Count of car sold', fontsize=11)
+        axes[0,1].set_xlabel('Mark', fontsize=11)
+        axes[0,1].set_title("Number of Petrol Non-Plug-In hybrid vehicles by Mark", fontsize=12)
+    else:
+        axes[0,1].set_visible(False)
+
+    # Panel 3: Essence
+    if not select_ESSENCE.empty:
+        orderESS = select_ESSENCE["Marque"].value_counts().head(top_n).index
+        dataESS = select_ESSENCE[select_ESSENCE["Marque"].isin(orderESS)]
+        sns.countplot(data=dataESS, x='Marque', order=orderESS, hue='Marque', palette='pastel', legend=False, ax=axes[1,0])
+        axes[1,0].tick_params(axis='x', rotation=75)
+        axes[1,0].set_ylabel('Count of car sold', fontsize=11)
+        axes[1,0].set_xlabel('Mark', fontsize=11)
+        axes[1,0].set_title("Number of Petrol vehicles by Mark", fontsize=12)
+    else:
+        axes[1,0].set_visible(False)
+
+    # Panel 4: Diesel hybride rechargeable
+    if not select_GAZOLE_HR.empty:
+        orderGAZHR = select_GAZOLE_HR["Marque"].value_counts().head(top_n).index
+        dataGAZHR = select_GAZOLE_HR[select_GAZOLE_HR["Marque"].isin(orderGAZHR)]
+        sns.countplot(data=dataGAZHR, x='Marque', order=orderGAZHR, hue='Marque', palette='pastel', legend=False, ax=axes[1,1])
+        axes[1,1].tick_params(axis='x', rotation=75)
+        axes[1,1].set_ylabel('Count of car sold', fontsize=11)
+        axes[1,1].set_xlabel('Mark', fontsize=11)
+        axes[1,1].set_title("Number of Diesel Plug-In vehicles by Mark", fontsize=12)
+    else:
+        axes[1,1].set_visible(False)
+
+    plt.tight_layout()
+    st.pyplot(fig, use_container_width=False, clear_figure=True)
+
+
 
 
