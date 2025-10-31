@@ -47,7 +47,7 @@ def render():
     mean_point = df.groupby("Energie", as_index=False)[["PGR_cumul", "Essai_Nox"]].mean()
     energie_counts = df["Energie"].value_counts()
 
-    fig, ax = plt.subplots(figsize=(7, 5))
+    fig, ax = plt.subplots(figsize=(2, 2))
     sns.scatterplot(data=mean_point, x="PGR_cumul", y="Essai_Nox", hue="Energie", marker="X", s=150, ax=ax)
     ax.set_xlabel("PGR cumul (CO2 + 25*HC)")
     ax.set_ylabel("Essai NOx")
