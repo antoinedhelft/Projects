@@ -13,7 +13,7 @@ st.sidebar.title("Navigation")
 from pages.accueil import render as render_accueil  # type: ignore
 from pages.medicaments import render as render_medicaments  # type: ignore
 from pages.crypto import render as render_crypto  # type: ignore
-from pages.car-pollution import render as render_car_pollution  # type: ignore
+from pages.car_pollution import render as render_car_pollution  # type: ignore
 from pages.trail import render as render_trail
 
 PAGES = {
