@@ -56,6 +56,6 @@ def render():
     pgr_path = CLEAN.parent / "plots" / "PGR_cumul.png"
     col_l, col_c, col_r = st.columns([1, 2, 1])
     with col_c:
-        st.image(str(pgr_path), width=1000)
+        st.image(str(pgr_path), width=800)
 
 
