@@ -1,0 +1,6 @@
+streamlit==1.38.0
+pandas==2.2.3
+numpy==2.2.5
+matplotlib==3.10.1
+seaborn==0.13.2
+Unidecode==1.4.0
