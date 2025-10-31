@@ -16,6 +16,18 @@ def render():
         st.error("Modules requis manquants pour l'analyse (installez streamlit, pandas, numpy, matplotlib, seaborn).")
         st.stop()
 
+    # Style/tailles (réduire police et éléments graphiques)
+    sns.set_theme(style="whitegrid", context="paper", font_scale=0.8)
+    plt.rcParams.update({
+        "figure.dpi": 110,
+        "axes.titlesize": 12,
+        "axes.labelsize": 10,
+        "xtick.labelsize": 9,
+        "ytick.labelsize": 9,
+        "legend.fontsize": 9,
+        "legend.title_fontsize": 10,
+    })
+
     # Chemins (depuis la racine du projet)
     ROOT = Path(__file__).resolve().parents[1]
     CLEAN = ROOT / "car_pollution" / "processed" / "pollution.csv"
@@ -47,8 +59,8 @@ def render():
     mean_point = df.groupby("Energie", as_index=False)[["PGR_cumul", "Essai_Nox"]].mean()
     energie_counts = df["Energie"].value_counts()
 
-    fig, ax = plt.subplots(figsize=(7, 5))
-    sns.scatterplot(data=mean_point, x="PGR_cumul", y="Essai_Nox", hue="Energie", marker="X", s=150, ax=ax)
+    fig, ax = plt.subplots(figsize=(5, 3), dpi=110)  # plus compact
+    sns.scatterplot(data=mean_point, x="PGR_cumul", y="Essai_Nox", hue="Energie", marker="X", s=70, ax=ax)
     ax.set_xlabel("PGR cumul (CO2 + 25*HC)")
     ax.set_ylabel("Essai NOx")
     ax.set_title("Moyennes par type d'énergie")
@@ -58,7 +70,14 @@ def render():
         try:
             px = mean_point.loc[mean_point["Energie"] == energie, "PGR_cumul"].values[0]
             py = mean_point.loc[mean_point["Energie"] == energie, "Essai_Nox"].values[0]
-            ax.annotate(str(count), xy=(px, py), xytext=(4, -10), textcoords="offset points")
+            ax.annotate(
+                str(count),
+                xy=(px, py),
+                xytext=(4, -10),
+                textcoords="offset points",
+                fontsize=8,
+                alpha=0.8,
+            )
         except Exception:
             pass
 
