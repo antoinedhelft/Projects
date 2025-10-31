@@ -92,7 +92,7 @@ def render():
     select_GAZOLE_HR = df[df["Energie"] == "ELEC+GAZOLE_HR"]
 
     # Option pour limiter le nombre de marques visibles (pour éviter la foule)
-    top_n = st.slider("Afficher les N marques les plus fréquentes", 5, 30, 15, 1)
+    top_n = st.slider("Afficher les N marques les plus fréquentes", 5, 18, 15, 1)
 
     import matplotlib.pyplot as plt
     import seaborn as sns
