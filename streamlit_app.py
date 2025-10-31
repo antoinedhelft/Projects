@@ -9,12 +9,25 @@ st.set_page_config(
 # --- Sidebar navigation ---
 st.sidebar.title("Navigation")
 
+# Masquer la navigation automatique de Streamlit (si un répertoire 'pages/' existe)
+st.markdown(
+    """
+    <style>
+    /* Anciennes versions */
+    div[data-testid="stSidebarNav"] { display: none; }
+    /* Nouvelles versions */
+    section[data-testid="stSidebarNav"] { display: none; }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 # Importations différées pour éviter les problèmes de boucle si Streamlit surveille les fichiers
-from pages.accueil import render as render_accueil  # type: ignore
-from pages.medicaments import render as render_medicaments  # type: ignore
-from pages.crypto import render as render_crypto  # type: ignore
-from pages.car_pollution import render as render_car_pollution  # type: ignore
-from pages.trail import render as render_trail  # type: ignore
+from app_pages.accueil import render as render_accueil  # type: ignore
+from app_pages.medicaments import render as render_medicaments  # type: ignore
+from app_pages.crypto import render as render_crypto  # type: ignore
+from app_pages.car_pollution import render as render_car_pollution  # type: ignore
+from app_pages.trail import render as render_trail  # type: ignore
 
 PAGES = {
     "Accueil": render_accueil,
