@@ -32,15 +32,15 @@ def render():
         st.stop()
 
     # Style/tailles (réduire police et éléments graphiques)
-    sns.set_theme(style="whitegrid", context="paper", font_scale=0.8)
+    sns.set_theme(style="whitegrid", context="paper", font_scale=0.75)
     plt.rcParams.update({
-        "figure.dpi": 110,
-        "axes.titlesize": 12,
-        "axes.labelsize": 10,
-        "xtick.labelsize": 9,
-        "ytick.labelsize": 9,
-        "legend.fontsize": 9,
-        "legend.title_fontsize": 10,
+        "figure.dpi": 100,
+        "axes.titlesize": 10,
+        "axes.labelsize": 8,
+        "xtick.labelsize": 7,
+        "ytick.labelsize": 7,
+        "legend.fontsize": 7,
+        "legend.title_fontsize": 8,
     })
 
     # Chemins (depuis la racine du projet)
