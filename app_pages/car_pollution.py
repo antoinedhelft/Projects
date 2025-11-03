@@ -149,9 +149,7 @@ def render():
         axes[1,1].set_visible(False)
 
     plt.tight_layout(pad=0.5)
-    cold_left, col_mid, col_right = st.columns([1, 2, 1])
-    with col_mid:
-        st.pyplot(fig, use_container_width=False, clear_figure=True)
+    st.pyplot(fig, use_container_width=False, clear_figure=True)
 
 
 
