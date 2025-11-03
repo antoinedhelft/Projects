@@ -97,7 +97,7 @@ def render():
     import matplotlib.pyplot as plt
     import seaborn as sns
 
-    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(7, 6), dpi=100)
+    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(8, 5), dpi=120)
     sns.set_theme(style='whitegrid')
 
     # Panel 1: Hybride rechargeable essence
@@ -148,8 +148,10 @@ def render():
     else:
         axes[1,1].set_visible(False)
 
-    plt.tight_layout()
-    st.pyplot(fig, use_container_width=True)
+    plt.tight_layout(pad=0.5)
++   col_left, col_mid, col_right = st.columns([1, 2, 1])
++   with col_mid:
++       st.pyplot(fig, use_container_width=False, clear_figure=True)
 
 
 
