@@ -106,9 +106,9 @@ def render():
         dataHR = select_HR[select_HR["Marque"].isin(orderHR)]
         sns.countplot(data=dataHR, x='Marque', order=orderHR, hue='Marque', palette='pastel', legend=False, ax=axes[0,0])
         axes[0,0].tick_params(axis='x', rotation=75)
-        axes[0,0].set_ylabel('Count of car sold', fontsize=11)
-        axes[0,0].set_xlabel('Mark', fontsize=11)
-        axes[0,0].set_title("Number of Petrol Plug-In Hybrid vehicles by Mark", fontsize=12)
+        axes[0,0].set_ylabel('Count of car sold', fontsize=9)
+        axes[0,0].set_xlabel('Mark', fontsize=9)
+        axes[0,0].set_title("Number of Petrol Plug-In Hybrid vehicles by Mark", fontsize=10)
     else:
         axes[0,0].set_visible(False)
 
@@ -118,9 +118,9 @@ def render():
         dataHNR = select_HNR[select_HNR["Marque"].isin(orderHNR)]
         sns.countplot(data=dataHNR, x='Marque', order=orderHNR, hue='Marque', palette='pastel', legend=False, ax=axes[0,1])
         axes[0,1].tick_params(axis='x', rotation=75)
-        axes[0,1].set_ylabel('Count of car sold', fontsize=11)
-        axes[0,1].set_xlabel('Mark', fontsize=11)
-        axes[0,1].set_title("Number of Petrol Non-Plug-In hybrid vehicles by Mark", fontsize=12)
+        axes[0,1].set_ylabel('Count of car sold', fontsize=9)
+        axes[0,1].set_xlabel('Mark', fontsize=9)
+        axes[0,1].set_title("Number of Petrol Non-Plug-In hybrid vehicles by Mark", fontsize=10)
     else:
         axes[0,1].set_visible(False)
 
@@ -130,9 +130,9 @@ def render():
         dataESS = select_ESSENCE[select_ESSENCE["Marque"].isin(orderESS)]
         sns.countplot(data=dataESS, x='Marque', order=orderESS, hue='Marque', palette='pastel', legend=False, ax=axes[1,0])
         axes[1,0].tick_params(axis='x', rotation=75)
-        axes[1,0].set_ylabel('Count of car sold', fontsize=11)
-        axes[1,0].set_xlabel('Mark', fontsize=11)
-        axes[1,0].set_title("Number of Petrol vehicles by Mark", fontsize=12)
+        axes[1,0].set_ylabel('Count of car sold', fontsize=9)
+        axes[1,0].set_xlabel('Mark', fontsize=9)
+        axes[1,0].set_title("Number of Petrol vehicles by Mark", fontsize=10)
     else:
         axes[1,0].set_visible(False)
 
@@ -142,16 +142,14 @@ def render():
         dataGAZHR = select_GAZOLE_HR[select_GAZOLE_HR["Marque"].isin(orderGAZHR)]
         sns.countplot(data=dataGAZHR, x='Marque', order=orderGAZHR, hue='Marque', palette='pastel', legend=False, ax=axes[1,1])
         axes[1,1].tick_params(axis='x', rotation=75)
-        axes[1,1].set_ylabel('Count of car sold', fontsize=11)
-        axes[1,1].set_xlabel('Mark', fontsize=11)
-        axes[1,1].set_title("Number of Diesel Plug-In vehicles by Mark", fontsize=12)
+        axes[1,1].set_ylabel('Count of car sold', fontsize=9)
+        axes[1,1].set_xlabel('Mark', fontsize=9)
+        axes[1,1].set_title("Number of Diesel Plug-In vehicles by Mark", fontsize=10)
     else:
         axes[1,1].set_visible(False)
 
     plt.tight_layout(pad=0.5)
-    col_left, col_mid, col_right = st.columns([1, 2, 1])
-    with col_mid:
-        st.pyplot(fig, use_container_width=False, clear_figure=True)
+    st.pyplot(fig, use_container_width=False, clear_figure=True)
 
 
 
