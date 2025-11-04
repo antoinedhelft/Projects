@@ -53,6 +53,19 @@ def render():
         "legend.title_fontsize": 8,
     })
 
+    # Helper: rendre une figure Matplotlib comme image avec largeur contrôlée
+    def _render_fig_as_image(fig, width=640, pad=0.4, bottom_adjust=None, dpi=110):
+        import io as _io
+        if pad is not None:
+            fig.tight_layout(pad=pad)
+        if bottom_adjust is not None:
+            fig.subplots_adjust(bottom=bottom_adjust)
+        buf = _io.BytesIO()
+        fig.savefig(buf, format="png", dpi=dpi, bbox_inches="tight")
+        buf.seek(0)
+        st.image(buf, width=width)
+        plt.close(fig)
+
     # Chemins (depuis la racine du projet)
     ROOT = Path(__file__).resolve().parents[1]
     CLEAN = ROOT / "car_pollution" / "processed" / "pollution.csv"
@@ -113,7 +126,7 @@ def render():
                 ax_s.set_xlabel("PGR_cumul (GWP)")
                 ax_s.set_ylabel("Essai_Nox")
                 ax_s.set_title("Moyennes par énergie: PGR vs NOx")
-                st.pyplot(fig_s, use_container_width=False, clear_figure=True)
+                _render_fig_as_image(fig_s, width=600, pad=0.4)
             else:
                 st.info("Image des moyennes PGR vs NOx non trouvée et colonnes manquantes pour recalculer le graphe.")
 
@@ -192,8 +205,7 @@ def render():
     else:
         axes[1,1].set_visible(False)
 
-    plt.tight_layout(pad=0.5)
-    st.pyplot(fig, use_container_width=False, clear_figure=True)
+    _render_fig_as_image(fig, width=680, pad=0.5, bottom_adjust=0.18)
 
     md_justify("On remarque que les 3 marques les plus vendues pour les véhicules hybride rechargeables essence ou diesel sont Volvo, Mercedes et BMW. " \
     "Pour les véhicules hybrides essence non rechargeables, les marques les plus vendues sont Renault, BMW et Ford. " \
@@ -297,8 +309,7 @@ def render():
         highlight_brands=["B.M.W.", "MERCEDES", "VOLVO"],
     )
 
-    plt.tight_layout(pad=0.7)
-    st.pyplot(fig2, use_container_width=False, clear_figure=True)
+    _render_fig_as_image(fig2, width=680, pad=0.7, bottom_adjust=0.18)
 
     st.subheader("Observations")
     st.write("- On constate que les marques vendant le plus de véhicules essence hybrides rechargeables figurent parmi les plus performantes en termes de PRG. ")
