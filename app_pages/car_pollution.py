@@ -21,10 +21,12 @@ def render():
     st.markdown("Les Hydrocarbures : https://www.geo.fr/environnement/hydrocarbure-definition-classification-et-utilisation-193625")
     st.markdown("Les polluants de l'air : https://www.ecologie.gouv.fr/pollution-lair-origines-situation-et-impacts")
 
-    <div style="text-align: left"> Le Potentiel Global de Réchauffement (PGR) est une force radiative cumulée sur une durée (généralement 100 ans) d'un quantité de gaz donnée. \
-    Il permet de comparer l'impact de différents gaz à effet de serre en les ramenant à une même unité, le CO2 équivalent (CO2e). \
-    Il permet donc de comparer les émissions de différents gaz en fonction de leur capacité à retenir la chaleur dans l'atmosphère. \
-    Nous utiliserons donc ici les PGR relatifs des Gaz à Effet de Serre (GES). </div>
+    st.markdown("<div style='text-align: justify'>"
+    "Le Potentiel Global de Réchauffement (PGR) est une force radiative cumulée sur une durée (généralement 100 ans) d'un quantité de gaz donnée." \
+    "Il permet de comparer l'impact de différents gaz à effet de serre en les ramenant à une même unité, le CO2 équivalent (CO2e)." \
+    "Il permet donc de comparer les émissions de différents gaz en fonction de leur capacité à retenir la chaleur dans l'atmosphère." \
+    "Nous utiliserons donc ici les PGR relatifs des Gaz à Effet de Serre (GES)."
+    "</div>", unsafe_allow_html=True)
     # Imports pour les graphiques
     try:
         import pandas as pd
