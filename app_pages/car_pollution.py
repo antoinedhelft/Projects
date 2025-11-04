@@ -308,7 +308,7 @@ def render():
 
     
     # Répartition par type d'énergie
-    fig3, ax3 = plt.subplots(figsize=(6, 3.2), dpi=110)
+    fig3, ax3 = plt.subplots(figsize=(10, 7), dpi=110)
     sns.countplot(
         data=df,
         x='Energie',
