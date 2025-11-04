@@ -126,7 +126,7 @@ def render():
                 ax_s.set_xlabel("PGR_cumul (GWP)")
                 ax_s.set_ylabel("Essai_Nox")
                 ax_s.set_title("Moyennes par énergie: PGR vs NOx")
-                _render_fig_as_image(fig_s, width=1000, pad=0.4)
+                _render_fig_as_image(fig_s, width=1200, pad=0.4)
             else:
                 st.info("Image des moyennes PGR vs NOx non trouvée et colonnes manquantes pour recalculer le graphe.")
 
@@ -205,7 +205,7 @@ def render():
     else:
         axes[1,1].set_visible(False)
 
-    _render_fig_as_image(fig, width=1000, pad=0.5, bottom_adjust=0.18)
+    _render_fig_as_image(fig, width=1200, pad=0.5, bottom_adjust=0.18)
 
     md_justify("On remarque que les 3 marques les plus vendues pour les véhicules hybride rechargeables essence ou diesel sont Volvo, Mercedes et BMW. " \
     "Pour les véhicules hybrides essence non rechargeables, les marques les plus vendues sont Renault, BMW et Ford. " \
@@ -340,7 +340,7 @@ def render():
     _buf = _io.BytesIO()
     fig3.savefig(_buf, format="png", dpi=110, bbox_inches="tight")
     _buf.seek(0)
-    st.image(_buf, width=800)  # largeur contrôlée, réduit le "rectangle blanc"
+    st.image(_buf, width=600)  # largeur contrôlée, réduit le "rectangle blanc"
     plt.close(fig3)
 
     st.write("- Les véhicules essence et diesel sont les plus vendus, et pourtant ce ne sont pas les moins polluants. ")
