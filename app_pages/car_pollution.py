@@ -322,8 +322,15 @@ def render():
     ax3.set_ylabel("Nombre", fontsize=8)
     ax3.tick_params(axis='x', rotation=75, labelsize=6)
     ax3.tick_params(axis='y', labelsize=6)
-    plt.tight_layout(pad=0.4)
-    st.pyplot(fig3, use_container_width=False, clear_figure=True)
+    # Réduire encore l'emprise visuelle: enregistrer en mémoire et contrôler la largeur
+    import io as _io
+    fig3.tight_layout(pad=0.4)
+    fig3.subplots_adjust(bottom=0.32)  # un peu d'espace pour les labels inclinés
+    _buf = _io.BytesIO()
+    fig3.savefig(_buf, format="png", dpi=110, bbox_inches="tight")
+    _buf.seek(0)
+    st.image(_buf, width=560)  # largeur contrôlée, réduit le "rectangle blanc"
+    plt.close(fig3)
 
     st.write("- Les véhicules essence et diesel sont les plus vendus, et pourtant ce ne sont pas les moins polluants. ")
     st.write("- Viennent ensuite les véhicules hybrides rechargeables diesel et essence.")
