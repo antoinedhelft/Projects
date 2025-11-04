@@ -309,7 +309,7 @@ def render():
         highlight_brands=["B.M.W.", "MERCEDES", "VOLVO"],
     )
 
-    _render_fig_as_image(fig2, width=680, pad=0.7, bottom_adjust=0.18)
+    _render_fig_as_image(fig2, width=1200, pad=0.7, bottom_adjust=0.18)
 
     st.subheader("Observations")
     st.write("- On constate que les marques vendant le plus de véhicules essence hybrides rechargeables figurent parmi les plus performantes en termes de PRG. ")
