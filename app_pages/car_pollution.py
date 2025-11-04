@@ -301,10 +301,10 @@ def render():
     st.pyplot(fig2, use_container_width=False, clear_figure=True)
 
     st.subheader("Observations")
-    st.write("- On constate que les marques vendant le plus de véhicules essence hybrides rechargeables figurent parmi les plus performantes en termes de PRG. " \
-    "- À l'inverse, pour les véhicules essence non hybrides rechargeables, les trois marques les plus vendues se situent plutôt en bas du classement PRG (à l'exception de BMW). " \
-    "- Pour les véhicules essence, les marques les plus vendues sont parmi celles qui affichent le PRG le plus faible. " \
-    "- Quant aux véhicules diesel non hybrides rechargeables, même si peu de marques ont développé ce type de moteur, on observe que les trois marques les plus vendues dans cette catégorie ne sont pas celles qui présentent le PRG le plus faible (à l'exception de Mercedes). " \
-    "- Les véhicules essence et diesel sont les plus vendus, et pourtant ce ne sont pas les moins polluants. " \
-    "- Viennent ensuite les véhicules hybrides rechargeables diesel et essence.)"
-    )
+    st.write("- On constate que les marques vendant le plus de véhicules essence hybrides rechargeables figurent parmi les plus performantes en termes de PRG. ")
+    st.write("- À l'inverse, pour les véhicules essence non hybrides rechargeables, les trois marques les plus vendues se situent plutôt en bas du classement PRG (à l'exception de BMW). ")
+    st.write("- Pour les véhicules essence, les marques les plus vendues sont parmi celles qui affichent le PRG le plus faible. ")
+    st.write("- Quant aux véhicules diesel non hybrides rechargeables, même si peu de marques ont développé ce type de moteur, on observe que les trois marques les plus vendues dans cette catégorie ne sont pas celles qui présentent le PRG le plus faible (à l'exception de Mercedes). ")
+    st.write("- Les véhicules essence et diesel sont les plus vendus, et pourtant ce ne sont pas les moins polluants. ")
+    st.write("- Viennent ensuite les véhicules hybrides rechargeables diesel et essence.)")
+    
