@@ -308,7 +308,7 @@ def render():
 
     
     # Répartition par type d'énergie
-    fig3, ax3 = plt.subplots(figsize=(10, 7), dpi=110)
+    fig3, ax3 = plt.subplots(figsize=(6, 3.2), dpi=110)
     sns.countplot(
         data=df,
         x='Energie',
@@ -317,11 +317,11 @@ def render():
         edgecolor='#333',
         ax=ax3,
     )
-    ax3.set_title("Répartition par type d'énergie", fontsize=9)
-    ax3.set_xlabel("Énergie", fontsize=8)
-    ax3.set_ylabel("Nombre", fontsize=8)
-    ax3.tick_params(axis='x', rotation=75, labelsize=6)
-    ax3.tick_params(axis='y', labelsize=6)
+    ax3.set_title("Répartition par type d'énergie", fontsize=12)
+    ax3.set_xlabel("Énergie", fontsize=10)
+    ax3.set_ylabel("Nombre", fontsize=10)
+    ax3.tick_params(axis='x', rotation=75, labelsize=8)
+    ax3.tick_params(axis='y', labelsize=8)
     # Réduire encore l'emprise visuelle: enregistrer en mémoire et contrôler la largeur
     import io as _io
     fig3.tight_layout(pad=0.4)
@@ -329,7 +329,7 @@ def render():
     _buf = _io.BytesIO()
     fig3.savefig(_buf, format="png", dpi=110, bbox_inches="tight")
     _buf.seek(0)
-    st.image(_buf, width=560)  # largeur contrôlée, réduit le "rectangle blanc"
+    st.image(_buf, width=800)  # largeur contrôlée, réduit le "rectangle blanc"
     plt.close(fig3)
 
     st.write("- Les véhicules essence et diesel sont les plus vendus, et pourtant ce ne sont pas les moins polluants. ")
