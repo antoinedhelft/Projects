@@ -345,3 +345,13 @@ def render():
 
     st.write("- Les véhicules essence et diesel sont les plus vendus, et pourtant ce ne sont pas les moins polluants. ")
     st.write("- Viennent ensuite les véhicules hybrides rechargeables diesel et essence.")
+
+    st.subheader("Conclusion")
+    st.write("- Les consommateurs n'achètent pas nécessairement les véhicules les moins polluants, puisque ce sont toujours les véhicules diesel ou essence qui restent les plus vendus.")
+    st.write("- Les consommateurs n'achètent pas forcément les véhicules les moins polluants du même segment : les véhicules hybrides non rechargeables les plus vendus figurent parmi les plus polluants.")
+
+    st.header("Limites et ouvertures")
+    st.write("- Cet ensemble de données ne prend pas en compte tous les polluants émis lors de l'utilisation d'un véhicule : émissions liées à la fabrication, à l'usure des pneus, aux freins, au N₂O, etc. Il ne s'agit donc que d'une estimation susceptible de varier en fonction de l'intégration de toutes les émissions polluantes connues à ce jour (voir le 4e rapport du GIEC de 2007).")
+    st.write("- Certaines marques sont sous-représentées et leurs valeurs de PGR ainsi que d'émissions de NOx peuvent être biaisées.")
+    st.write("- Les chiffres de ventes ne sont pas représentatifs des ventes réelles en France (BMW est en tête des ventes dans l'ensemble de données, alors que les marques françaises sont les plus vendues en France d'après les nouvelles immatriculations sur le territoire) (cf. : https://pfa-auto.fr/2023/04/01/marche-automobile-francais-mars-2023/).")
+    st.write("- Nous ne disposons pas de la période couverte par la création de cet ensemble de données, ni de la provenance de ces valeurs (tous les concessionnaires français ont-ils inclus ces données ou seulement le service d'immatriculation ?). - Il pourrait également être intéressant d'inclure le type et le prix du véhicule vendu afin d'observer ce qui attire le plus les acheteurs.")
