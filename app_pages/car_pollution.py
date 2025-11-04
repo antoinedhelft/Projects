@@ -28,6 +28,10 @@ def render():
     "Nous utiliserons donc ici les PGR relatifs des Gaz à Effet de Serre (GES)."
     )
 
+st.caption("À savoir que les NOx ne sont pas des GES, mais des polluants de l'air ayant des effets néfastes sur la santé et l'environnement. " \
+"En effet ils ont un effet irritant sur les voies respiratoires et contribuent à la formation de l'ozone troposphérique.")
+    st.markdown("---")
+
     # Imports pour les graphiques
     try:
         import pandas as pd
@@ -98,7 +102,7 @@ def render():
     select_GAZOLE_HR = df[df["Energie"] == "ELEC+GAZOLE_HR"]
 
     # Option pour limiter le nombre de marques visibles (pour éviter la foule)
-    top_n = st.slider("Afficher les N marques les plus fréquentes", 5, 18, 15, 1)
+    top_n = st.slider("Afficher les N marques les plus fréquentes", 5, 30, 15, 1)
 
     import matplotlib.pyplot as plt
     import seaborn as sns
@@ -112,9 +116,9 @@ def render():
         dataHR = select_HR[select_HR["Marque"].isin(orderHR)]
         sns.countplot(data=dataHR, x='Marque', order=orderHR, hue='Marque', palette='pastel', legend=False, ax=axes[0,0])
         axes[0,0].tick_params(axis='x', rotation=75)
-        axes[0,0].set_ylabel('Count of car sold', fontsize=9)
-        axes[0,0].set_xlabel('Mark', fontsize=9)
-        axes[0,0].set_title("Number of Petrol Plug-In Hybrid vehicles by Mark", fontsize=10)
+        axes[0,0].set_ylabel('Nombre de véhicules vendus', fontsize=9)
+        axes[0,0].set_xlabel('Marque', fontsize=9)
+        axes[0,0].set_title("Nombre de véhicules essence hybride rechargeable par Marque", fontsize=10)
     else:
         axes[0,0].set_visible(False)
 
@@ -124,9 +128,9 @@ def render():
         dataHNR = select_HNR[select_HNR["Marque"].isin(orderHNR)]
         sns.countplot(data=dataHNR, x='Marque', order=orderHNR, hue='Marque', palette='pastel', legend=False, ax=axes[0,1])
         axes[0,1].tick_params(axis='x', rotation=75)
-        axes[0,1].set_ylabel('Count of car sold', fontsize=9)
-        axes[0,1].set_xlabel('Mark', fontsize=9)
-        axes[0,1].set_title("Number of Petrol Non-Plug-In hybrid vehicles by Mark", fontsize=10)
+        axes[0,1].set_ylabel('Nombre de véhicules vendus', fontsize=9)
+        axes[0,1].set_xlabel('Marque', fontsize=9)
+        axes[0,1].set_title("Nombre de véhicules essence hybride non rechargeable par Marque", fontsize=10)
     else:
         axes[0,1].set_visible(False)
 
@@ -136,9 +140,9 @@ def render():
         dataESS = select_ESSENCE[select_ESSENCE["Marque"].isin(orderESS)]
         sns.countplot(data=dataESS, x='Marque', order=orderESS, hue='Marque', palette='pastel', legend=False, ax=axes[1,0])
         axes[1,0].tick_params(axis='x', rotation=75)
-        axes[1,0].set_ylabel('Count of car sold', fontsize=9)
-        axes[1,0].set_xlabel('Mark', fontsize=9)
-        axes[1,0].set_title("Number of Petrol vehicles by Mark", fontsize=10)
+        axes[1,0].set_ylabel('Nombre de véhicules vendus', fontsize=9)
+        axes[1,0].set_xlabel('Marque', fontsize=9)
+        axes[1,0].set_title("Nombre de véhicules Essence par Marque", fontsize=10)
     else:
         axes[1,0].set_visible(False)
 
@@ -148,15 +152,19 @@ def render():
         dataGAZHR = select_GAZOLE_HR[select_GAZOLE_HR["Marque"].isin(orderGAZHR)]
         sns.countplot(data=dataGAZHR, x='Marque', order=orderGAZHR, hue='Marque', palette='pastel', legend=False, ax=axes[1,1])
         axes[1,1].tick_params(axis='x', rotation=75)
-        axes[1,1].set_ylabel('Count of car sold', fontsize=9)
-        axes[1,1].set_xlabel('Mark', fontsize=9)
-        axes[1,1].set_title("Number of Diesel Plug-In vehicles by Mark", fontsize=10)
+        axes[1,1].set_ylabel('Nombre de véhicules vendus', fontsize=9)
+        axes[1,1].set_xlabel('Marque', fontsize=9)
+        axes[1,1].set_title("Nombre de véhicules Diesel Hybride rechargeable par Marque", fontsize=10)
     else:
         axes[1,1].set_visible(False)
 
     plt.tight_layout(pad=0.5)
     st.pyplot(fig, use_container_width=False, clear_figure=True)
 
-
-
+    md_justify("On remarque que les 3 marques les plus vendues pour les véhicules hybride rechargeables essence ou diesel sont Volvo, Mercedes et BMW." \
+    "Pour les véhicules hybrides essence non rechargeables, les marques les plus vendues sont Renault, BMW et Ford." \
+    "Et pour les véhicules essence seuls, les marques les plus vendues sont BMW, Mini et Skoda.")
+    md_justify("")
+    md_justify("On va donc étudier quels sont leur PGR resperctifs afin de voir si les véhicules les plus vendus sont aussi les moins polluants.")
+    st.caption("Avez vous remarqué que BMW est dans le top des ventes pour les 4 motorisations?")
 
