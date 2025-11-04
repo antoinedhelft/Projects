@@ -5,23 +5,26 @@ from pathlib import Path
 def render():
     st.title("Pollution VL")
     st.markdown("---")
-    st.caption("Exploration des indicateurs à partir du jeu de données déjà préparé.")
 
     st.subheader("Contexte du projet")
     st.markdown("""
     Ce projet à pour objectif d'étudier les émissions des véhicules légers (VL) en France, en se basant sur un dataset fourni par l'ademe et préparé auparavant.
-    Le dataset fourni des informations sur les caractéristiques des véhicules ainsi que leurs émissions à différentes vitesses et lors d'un essai routier. '
-    C'est ce que nous allons utiliser pour analyser le potentiel de réchauffement global (PGR) des véhicules par type de moteur. 
+    Le dataset fourni des informations sur les caractéristiques des véhicules ainsi que leurs émissions à différentes vitesses et lors d'un essai routier.
+    C'est ce que nous allons utiliser pour analyser le potentiel de réchauffement global (PGR) des véhicules par motorisation. 
 
-    Il est à noter que cet ensemble de données ne couvre pas tous les aspects des émissions de véhicules (uniquement ceux mesurés et produits par le moteur). 
+    Il est à noter que cet ensemble de données ne couvre pas tous les aspects des émissions des véhicules (uniquement ceux mesurés et produits par la motorisation). 
     """)
-    st.markdown("Données brutes accessibles ici : (https://www.data.gouv.fr/fr/datasets/r/3b3cce6b-073d-4b4c-a68c-2744c92f4045)!")
-    st.markdown("les gazs à effets de serres : (https://jancovici.com/changement-climatique/gaz-a-effet-de-serre-et-cycle-du-carbone/quels-sont-les-gaz-a-effet-de-serre-quels-sont-leurs-contribution-a-leffet-de-serre/)")
-    st.markdown("(https://www.geo.fr/environnement/hydrocarbure-definition-classification-et-utilisation-193625)")
+    st.markdown("Données brutes accessibles ici : https://www.data.gouv.fr/fr/datasets/r/3b3cce6b-073d-4b4c-a68c-2744c92f4045")
 
-    st.markdown("Les polluants de l'air : (https://www.ecologie.gouv.fr/pollution-lair-origines-situation-et-impacts)")
+    st.markdown("Pour pouvoir comparer les émissions, nous allons nous référer à quelques notions clés : ")
+    st.markdown("Les gazs à effets de serres : https://jancovici.com/changement-climatique/gaz-a-effet-de-serre-et-cycle-du-carbone/quels-sont-les-gaz-a-effet-de-serre-quels-sont-leurs-contribution-a-leffet-de-serre/)")
+    st.markdown("Les Hydrocarbures : https://www.geo.fr/environnement/hydrocarbure-definition-classification-et-utilisation-193625")
+    st.markdown("Les polluants de l'air : https://www.ecologie.gouv.fr/pollution-lair-origines-situation-et-impacts")
 
-
+    <div style="text-align: left"> Le Potentiel Global de Réchauffement (PGR) est une force radiative cumulée sur une durée (généralement 100 ans) d'un quantité de gaz donnée. \
+    Il permet de comparer l'impact de différents gaz à effet de serre en les ramenant à une même unité, le CO2 équivalent (CO2e). \
+    Il permet donc de comparer les émissions de différents gaz en fonction de leur capacité à retenir la chaleur dans l'atmosphère. \
+    Nous utiliserons donc ici les PGR relatifs des Gaz à Effet de Serre (GES). </div>
     # Imports pour les graphiques
     try:
         import pandas as pd
@@ -59,7 +62,7 @@ def render():
         st.stop()
 
     # Aperçu
-    st.subheader("Aperçu des données propres")
+    st.subheader("Aperçu des données")
     st.dataframe(df.head(10), use_container_width=True)
     st.caption(f"{df.shape[0]} lignes · {df.shape[1]} colonnes")
 
