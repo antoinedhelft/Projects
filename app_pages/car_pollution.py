@@ -261,7 +261,8 @@ def render():
         ax.set_title(title, fontsize=10)
         ax.set_xlabel("Marque", fontsize=9)
         ax.set_ylabel("PGR moyen", fontsize=9)
-        ax.tick_params(axis="x", rotation=75)
+        ax.tick_params(axis="x", labelsize=7, rotation=75)
+        ax.tick_params(axis="y", labelsize=7)
         # Annotations
         for container in ax.containers:
             ax.bar_label(container, fmt="%.2f", fontsize=7, padding=2)
