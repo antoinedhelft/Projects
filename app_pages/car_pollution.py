@@ -28,8 +28,8 @@ def render():
     "Nous utiliserons donc ici les PGR relatifs des Gaz à Effet de Serre (GES)."
     )
 
-st.caption("À savoir que les NOx ne sont pas des GES, mais des polluants de l'air ayant des effets néfastes sur la santé et l'environnement. " \
-"En effet ils ont un effet irritant sur les voies respiratoires et contribuent à la formation de l'ozone troposphérique.")
+    st.caption("À savoir que les NOx ne sont pas des GES, mais des polluants de l'air ayant des effets néfastes sur la santé et l'environnement. " \
+    "En effet ils ont un effet irritant sur les voies respiratoires et contribuent à la formation de l'ozone troposphérique.")
     st.markdown("---")
 
     # Imports pour les graphiques
