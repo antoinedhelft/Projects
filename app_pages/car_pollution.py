@@ -308,7 +308,7 @@ def render():
 
     
     # Répartition par type d'énergie 
-    fig3, ax3 = plt.subplots(figsize=(6, 3), dpi=80)
+    fig3, ax3 = plt.subplots(figsize=(6, 3), dpi=50)
     sns.countplot(
         data=df,
         x='Energie',
@@ -318,10 +318,10 @@ def render():
         ax=ax3,
     )
     ax3.set_title("Répartition par type d'énergie", fontsize=10)
-    ax3.set_xlabel("Énergie", fontsize=9)
-    ax3.set_ylabel("Nombre", fontsize=9)
-    ax3.tick_params(axis='x', rotation=75, labelsize=7)
-    ax3.tick_params(axis='y', labelsize=7)
+    ax3.set_xlabel("Énergie", fontsize=8)
+    ax3.set_ylabel("Nombre", fontsize=8)
+    ax3.tick_params(axis='x', rotation=75, labelsize=6)
+    ax3.tick_params(axis='y', labelsize=6)
     plt.tight_layout(pad=0.5)
     st.pyplot(fig3, use_container_width=False, clear_figure=True)
 
