@@ -307,8 +307,8 @@ def render():
     st.write("- Quant aux véhicules diesel hybrides rechargeables, même si peu de marques ont développé ce type de moteur, on observe que les trois marques les plus vendues dans cette catégorie ne sont pas celles qui présentent le PRG le plus faible (à l'exception de Mercedes). ")
 
     
-    # Répartition par type d'énergie 
-    fig3, ax3 = plt.subplots(figsize=(6, 3), dpi=50)
+    # Répartition par type d'énergie
+    fig3, ax3 = plt.subplots(figsize=(6, 3.2), dpi=110)
     sns.countplot(
         data=df,
         x='Energie',
@@ -317,12 +317,12 @@ def render():
         edgecolor='#333',
         ax=ax3,
     )
-    ax3.set_title("Répartition par type d'énergie", fontsize=10)
+    ax3.set_title("Répartition par type d'énergie", fontsize=9)
     ax3.set_xlabel("Énergie", fontsize=8)
     ax3.set_ylabel("Nombre", fontsize=8)
     ax3.tick_params(axis='x', rotation=75, labelsize=6)
     ax3.tick_params(axis='y', labelsize=6)
-    plt.tight_layout(pad=0.5)
+    plt.tight_layout(pad=0.4)
     st.pyplot(fig3, use_container_width=False, clear_figure=True)
 
     st.write("- Les véhicules essence et diesel sont les plus vendus, et pourtant ce ne sont pas les moins polluants. ")
