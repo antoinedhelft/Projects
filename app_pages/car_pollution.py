@@ -204,12 +204,12 @@ def render():
 
     # === Classement du GPR moyen par marque ===
     st.markdown("---")
-    st.subheader("Classement du GPR moyen par marque et par type d'énergie")
+    st.subheader("Classement du PGR moyen par marque et par type d'énergie")
 
     # Vérifs colonnes nécessaires
     needed_cols_gwp = {"Energie", "Marque", "PGR_cumul"}
     if not needed_cols_gwp.issubset(df.columns):
-        st.warning("Colonnes manquantes pour le classement GWP (Energie, Marque, PGR_cumul).")
+        st.warning("Colonnes manquantes pour le classement PGR (Energie, Marque, PGR_cumul).")
         return
 
     # Sélectionner les mêmes catégories d'énergie que pour les counts
@@ -238,30 +238,29 @@ def render():
     fig2, axes2 = plt.subplots(nrows=2, ncols=2, figsize=(11, 7), dpi=120)
     sns.set_theme(style="whitegrid")
 
-    # Palette discrète avec surbrillance du minimum
-    def bars_with_annotations(ax, data, title):
+    # Palette discrète avec surbrillance des marques demandées
+    def bars_with_annotations(ax, data, title, highlight_brands=None):
         if data is None or data.empty:
             ax.set_visible(False)
             return
-        # Mettre en évidence la meilleure marque (GWP le plus faible)
-        min_idx = data["PGR_cumul"].idxmin()
-        palette = ["#c7d3e3"] * len(data)
-        try:
-            best_pos = data.index.get_loc(min_idx)
-            palette[best_pos] = "#2b8a3e"  # vert pour la meilleure
-        except Exception:
-            pass
+        # Mettre en évidence les marques spécifiées
+        highlight_set = {str(b).upper() for b in (highlight_brands or [])}
+        palette = [
+            "#2b8a3e" if str(m).upper() in highlight_set else "#c7d3e3"
+            for m in data["Marque"]
+        ]
         sns.barplot(
             data=data,
             x="Marque",
             y="PGR_cumul",
+            order=list(data["Marque"]),
             palette=palette,
             ax=ax,
             edgecolor="#333",
         )
         ax.set_title(title, fontsize=10)
         ax.set_xlabel("Marque", fontsize=9)
-        ax.set_ylabel("GWP moyen (PGR_cumul)", fontsize=9)
+        ax.set_ylabel("PGR moyen", fontsize=9)
         ax.tick_params(axis="x", rotation=75)
         # Annotations
         for container in ax.containers:
@@ -272,10 +271,30 @@ def render():
     data_ESS = gwp_by_brand(sel_ESS)
     data_GAZHR = gwp_by_brand(sel_GAZHR)
 
-    bars_with_annotations(axes2[0, 0], data_HR, "GPR moyen — Hybride rechargeable essence")
-    bars_with_annotations(axes2[0, 1], data_HNR, "GPR moyen — Hybride non rechargeable essence")
-    bars_with_annotations(axes2[1, 0], data_ESS, "GPR moyen — Essence")
-    bars_with_annotations(axes2[1, 1], data_GAZHR, "GPR moyen — Diesel hybride rechargeable")
+    bars_with_annotations(
+        axes2[0, 0],
+        data_HR,
+        "PGR moyen — Hybride rechargeable essence",
+        highlight_brands=["VOLVO", "MERCEDES", "B.M.W."],
+    )
+    bars_with_annotations(
+        axes2[0, 1],
+        data_HNR,
+        "PGR moyen — Hybride non rechargeable essence",
+        highlight_brands=["RENAULT", "B.M.W.", "FORD"],
+    )
+    bars_with_annotations(
+        axes2[1, 0],
+        data_ESS,
+        "PGR moyen — Essence",
+        highlight_brands=["B.M.W.", "MINI", "SKODA"],
+    )
+    bars_with_annotations(
+        axes2[1, 1],
+        data_GAZHR,
+        "PGR moyen — Diesel hybride rechargeable",
+        highlight_brands=["B.M.W.", "MERCEDES", "VOLVO"],
+    )
 
     plt.tight_layout(pad=0.7)
     st.pyplot(fig2, use_container_width=False, clear_figure=True)
