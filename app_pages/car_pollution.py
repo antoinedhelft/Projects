@@ -317,11 +317,11 @@ def render():
         edgecolor='#333',
         ax=ax3,
     )
-    ax3.set_title("Répartition par type d'énergie", fontsize=12)
-    ax3.set_xlabel("Énergie", fontsize=10)
-    ax3.set_ylabel("Nombre", fontsize=10)
-    ax3.tick_params(axis='x', rotation=75, labelsize=8)
-    ax3.tick_params(axis='y', labelsize=8)
+    ax3.set_title("Répartition par type d'énergie", fontsize=11)
+    ax3.set_xlabel("Énergie", fontsize=9)
+    ax3.set_ylabel("Nombre", fontsize=9)
+    ax3.tick_params(axis='x', rotation=75, labelsize=7)
+    ax3.tick_params(axis='y', labelsize=7)
     # Réduire encore l'emprise visuelle: enregistrer en mémoire et contrôler la largeur
     import io as _io
     fig3.tight_layout(pad=0.4)
