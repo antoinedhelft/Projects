@@ -9,9 +9,9 @@ def render():
     st.markdown("---")
 
     st.subheader("Contexte du projet")
-    md_justify("Ce projet à pour objectif d'étudier les émissions des véhicules légers (VL) en France, en se basant sur un dataset fourni par l'ademe et préparé auparavant." \
-    "Le dataset fourni des informations sur les caractéristiques des véhicules ainsi que leurs émissions à différentes vitesses et lors d'un essai routier." \
-    "C'est ce que nous allons utiliser pour analyser le potentiel de réchauffement global (PGR) des véhicules par motorisation." \
+    md_justify("Ce projet à pour objectif d'étudier les émissions des véhicules légers (VL) en France, en se basant sur un dataset fourni par l'ademe et préparé auparavant. " \
+    "Le dataset fourni des informations sur les caractéristiques des véhicules ainsi que leurs émissions à différentes vitesses et lors d'un essai routier. " \
+    "C'est ce que nous allons utiliser pour analyser le potentiel de réchauffement global (PGR) des véhicules par motorisation. " \
     "Il est à noter que cet ensemble de données ne couvre pas tous les aspects des émissions des véhicules (uniquement ceux mesurés et produits par la motorisation)." 
     )
 
@@ -22,9 +22,9 @@ def render():
     st.markdown("Les Hydrocarbures : https://www.geo.fr/environnement/hydrocarbure-definition-classification-et-utilisation-193625")
     st.markdown("Les polluants de l'air : https://www.ecologie.gouv.fr/pollution-lair-origines-situation-et-impacts")
 
-    md_justify("Le Potentiel Global de Réchauffement (PGR) est une force radiative cumulée sur une durée (généralement 100 ans) d'un quantité de gaz donnée." \
-    "Il permet de comparer l'impact de différents gaz à effet de serre en les ramenant à une même unité, le CO2 équivalent (CO2e)." \
-    "Il permet donc de comparer les émissions de différents gaz en fonction de leur capacité à retenir la chaleur dans l'atmosphère." \
+    md_justify("Le Potentiel Global de Réchauffement (PGR) est une force radiative cumulée sur une durée (généralement 100 ans) d'un quantité de gaz donnée. " \
+    "Il permet de comparer l'impact de différents gaz à effet de serre en les ramenant à une même unité, le CO2 équivalent (CO2e). " \
+    "Il permet donc de comparer les émissions de différents gaz en fonction de leur capacité à retenir la chaleur dans l'atmosphère. " \
     "Nous utiliserons donc ici les PGR relatifs des Gaz à Effet de Serre (GES)."
     )
 
@@ -161,10 +161,10 @@ def render():
     plt.tight_layout(pad=0.5)
     st.pyplot(fig, use_container_width=False, clear_figure=True)
 
-    md_justify("On remarque que les 3 marques les plus vendues pour les véhicules hybride rechargeables essence ou diesel sont Volvo, Mercedes et BMW." \
-    "Pour les véhicules hybrides essence non rechargeables, les marques les plus vendues sont Renault, BMW et Ford." \
+    md_justify("On remarque que les 3 marques les plus vendues pour les véhicules hybride rechargeables essence ou diesel sont Volvo, Mercedes et BMW. " \
+    "Pour les véhicules hybrides essence non rechargeables, les marques les plus vendues sont Renault, BMW et Ford. " \
     "Et pour les véhicules essence seuls, les marques les plus vendues sont BMW, Mini et Skoda.")
     md_justify("")
-    md_justify("On va donc étudier quels sont leur PGR resperctifs afin de voir si les véhicules les plus vendus sont aussi les moins polluants.")
+    md_justify("On va donc étudier quels sont leur PGR respectifs afin de voir si les véhicules les plus vendus sont aussi les moins polluants.")
     st.caption("Avez vous remarqué que BMW est dans le top des ventes pour les 4 motorisations?")
 
