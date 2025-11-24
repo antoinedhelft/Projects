@@ -9,15 +9,56 @@ def render():
     st.markdown("---")
 
     st.subheader("Contexte du projet")
-    md_justify()
+    md_justify("Analyse des données de santé.")
 
         # Chemins (depuis la racine du projet)
     ROOT = Path(__file__).resolve().parents[1]
     CLEAN = ROOT / "medicines" / "processed"
 
-    panorama_path = CLEAN.parent / "plot" / "Panorama.png"
-    col_l, col_c, col_r = st.columns([1, 2, 1])
-    with col_c:
-        if panorama_path.exists():
-            st.image(str(panorama_path), width=800)
+    plot_dir = CLEAN.parent / "plot"
+
+    # Panorama
+    img_path = plot_dir / "Panorama.png"
+    if img_path.exists():
+        st.subheader("Panorama")
+        # md_justify("Votre texte ici...")
+        st.image(str(img_path), use_container_width=True)
+    
+    st.markdown("---")
+    
+    # Dépenses
+    img_path = plot_dir / "Depenses.png"
+    if img_path.exists():
+        st.subheader("Dépenses")
+        # md_justify("Votre texte ici...")
+        st.image(str(img_path), use_container_width=True)
+
+    st.markdown("---")
+
+    # Classes Thérapeutiques
+    img_path = plot_dir / "Classe_therapeutique.png"
+    if img_path.exists():
+        st.subheader("Classes Thérapeutiques")
+        # md_justify("Votre texte ici...")
+        st.image(str(img_path), use_container_width=True)
+
+    st.markdown("---")
+
+    # Focus sur les Classes Thérapeutiques
+    img_path = plot_dir / "Focus_classe_therapeutique.png"
+    if img_path.exists():
+        st.subheader("Focus sur les Classes Thérapeutiques")
+        # md_justify("Votre texte ici...")
+        st.image(str(img_path), use_container_width=True)
+
+    st.markdown("---")
+
+    # Synthèse
+    img_path = plot_dir / "Synthese.png"
+    if img_path.exists():
+        st.subheader("Synthèse")
+        # md_justify("Votre texte ici...")
+        st.image(str(img_path), use_container_width=True)
+    
+    st.markdown("---")
 
