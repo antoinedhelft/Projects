@@ -20,7 +20,7 @@ def render():
     if img_path.exists():
         st.subheader("Panorama")
         # md_justify("Votre texte ici...")
-        st.image(str(img_path), use_container_width=True)
+        st.image(str(img_path), use_column_width=True)
     
     st.markdown("---")
     
@@ -29,7 +29,7 @@ def render():
     if img_path.exists():
         st.subheader("Dépenses")
         # md_justify("Votre texte ici...")
-        st.image(str(img_path), use_container_width=True)
+        st.image(str(img_path), use_column_width=True)
 
     st.markdown("---")
 
@@ -38,7 +38,7 @@ def render():
     if img_path.exists():
         st.subheader("Classes Thérapeutiques")
         # md_justify("Votre texte ici...")
-        st.image(str(img_path), use_container_width=True)
+        st.image(str(img_path), use_column_width=True)
 
     st.markdown("---")
 
@@ -47,7 +47,7 @@ def render():
     if img_path.exists():
         st.subheader("Focus sur les Classes Thérapeutiques")
         # md_justify("Votre texte ici...")
-        st.image(str(img_path), use_container_width=True)
+        st.image(str(img_path), use_column_width=True)
 
     st.markdown("---")
 
@@ -56,7 +56,7 @@ def render():
     if img_path.exists():
         st.subheader("Synthèse")
         # md_justify("Votre texte ici...")
-        st.image(str(img_path), use_container_width=True)
+        st.image(str(img_path), use_column_width=True)
     
     st.markdown("---")
 
