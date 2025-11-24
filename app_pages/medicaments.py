@@ -15,7 +15,7 @@ def render():
     ROOT = Path(__file__).resolve().parents[1]
     CLEAN = ROOT / "medicines" / "processed"
 
-    plot_dir = CLEAN.parent / "plot"
+    plot_dir = CLEAN / "plot"
 
     # Panorama
     img_path = plot_dir / "Panorama.png"
