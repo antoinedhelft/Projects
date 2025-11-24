@@ -13,12 +13,10 @@ def render():
 
         # Chemins (depuis la racine du projet)
     ROOT = Path(__file__).resolve().parents[1]
-    CLEAN = ROOT / "medicines" / "processed"
-
-    plot_dir = CLEAN / "plot"
+    CLEAN = ROOT / "medicines" / "processed" / "plot"
 
     # Panorama
-    img_path = plot_dir / "Panorama.png"
+    img_path = CLEAN / "Panorama.png"
     if img_path.exists():
         st.subheader("Panorama")
         # md_justify("Votre texte ici...")
@@ -27,7 +25,7 @@ def render():
     st.markdown("---")
     
     # Dépenses
-    img_path = plot_dir / "Depenses.png"
+    img_path = CLEAN / "Depenses.png"
     if img_path.exists():
         st.subheader("Dépenses")
         # md_justify("Votre texte ici...")
@@ -36,7 +34,7 @@ def render():
     st.markdown("---")
 
     # Classes Thérapeutiques
-    img_path = plot_dir / "Classe_therapeutique.png"
+    img_path = CLEAN / "Classe_therapeutique.png"
     if img_path.exists():
         st.subheader("Classes Thérapeutiques")
         # md_justify("Votre texte ici...")
@@ -45,7 +43,7 @@ def render():
     st.markdown("---")
 
     # Focus sur les Classes Thérapeutiques
-    img_path = plot_dir / "Focus_classe_therapeutique.png"
+    img_path = CLEAN / "Focus_classe_therapeutique.png"
     if img_path.exists():
         st.subheader("Focus sur les Classes Thérapeutiques")
         # md_justify("Votre texte ici...")
@@ -54,7 +52,7 @@ def render():
     st.markdown("---")
 
     # Synthèse
-    img_path = plot_dir / "Synthese.png"
+    img_path = CLEAN / "Synthese.png"
     if img_path.exists():
         st.subheader("Synthèse")
         # md_justify("Votre texte ici...")
