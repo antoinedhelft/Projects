@@ -5,11 +5,19 @@ def md_justify(txt: str):
     st.markdown(f"<div style='text-align: justify'>{txt}</div>", unsafe_allow_html=True)
 
 def render():
-    st.title("Dépenses des médicaments en ville en France")
+    st.title("Coût de prise en charge des médicaments dispensés en ville en France")
     st.markdown("---")
 
     st.subheader("Contexte du projet")
-    md_justify("Analyse des données de santé.")
+    md_justify("En France, la sécurité sociale est un organisme qui prend en charge une majeur partie des coûts liés à la santé."
+               "Ce projet vise à analyser les dépenses liées aux médicaments dispensés en ville entre 2021 et 2024."
+               "Les données utilisées proviennent de https://www.data.gouv.fr/, une plateforme publique de données ouvertes."
+               "Le projet analyse des donénes à différents niveaux ATC (Anatomical therapeutic Chemical) du plus large au plus fin : " \
+               "- Classe thérapeutique" \
+               "- Classe Pharmacologique" \
+               "- Classe chimique" \
+               "- Substance chimique" \
+               "Le projet a été réalisé via Power BI.")
 
         # Chemins (depuis la racine du projet)
     ROOT = Path(__file__).resolve().parents[1]
