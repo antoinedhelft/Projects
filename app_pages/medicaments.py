@@ -20,12 +20,12 @@ def render():
 )
     
     st.subheader("Méthodologie & Visualisation :")
-    st.justify("- Analyse temporelle : Mise en parallèle du volume (boîtes) et de la valeur (montant remboursé) pour repérer les décrochages. On note une saisonnalité marquées avec des pics hivernaux et des creux estivaux.<br>" 
+    md_justify("- Analyse temporelle : Mise en parallèle du volume (boîtes) et de la valeur (montant remboursé) pour repérer les décrochages. On note une saisonnalité marquées avec des pics hivernaux et des creux estivaux.<br>" 
     "- Indicateur coût unitaire : Focus spécifique sur l'évolution du prix moyen part boîte, révélant une tendance inflationniste.<br>"
     "- KPIs macro : Vue d'ensemble sur la période (94 Mrd€ de dépenses pour 9.3 Mrd de boîtes). <br>")
 
     st.subheader("Insights Clés :")
-    st.justify("1. un effet 'Ciseaux' : ALors que les volumes semblent suivre une saisonnalité stable, le montant remboursé montre des pics de plus en plus hauts, suggérant que la hausse des dépenses n'est pas uniquement due à une surconsommation.<br>"
+    md_justify("1. un effet 'Ciseaux' : ALors que les volumes semblent suivre une saisonnalité stable, le montant remboursé montre des pics de plus en plus hauts, suggérant que la hausse des dépenses n'est pas uniquement due à une surconsommation.<br>"
                "2. Inflation du coût moyen : L'insight majeur est l'augmentation continue du prix moyen de la boîte remboursée, passant de 9.27€ en 2021 à 11.31€ en 2024, soit une augmentation de +22% en 4 ans. Cela soulève une question : consommons-nous des médicaments plus chers, ou les médicaments existants coûtent-ils plus cher?<br>")
 
         # Chemins (depuis la racine du projet)
