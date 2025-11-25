@@ -1,79 +1,85 @@
 import streamlit as st
 from pathlib import Path
 
-def md_justify(txt: str):
-    st.markdown(f"<div style='text-align: justify'>{txt}</div>", unsafe_allow_html=True)
+            # Chemins (depuis la racine du projet)
+ROOT = Path(__file__).resolve().parents[1]
+CLEAN = ROOT / "medicines" / "processed" / "plot"
 
-def render():
-    st.title("Analyse des coûts et volumes des médicaments remboursés (France, 2021-2024)")
-    st.markdown("---")
+# Panorama
+panorama_path = CLEAN / "Panorama.png"
+classe_therapeutique_path = CLEAN / "Classe_therapeutique.png"
+focus_path = CLEAN / "Focus_classe_therapeutique.png"
+depenses_path = CLEAN / "Depenses.png"
+synthese_path = CLEAN / "Synthese.png"
 
-    st.subheader("Contexte du projet")
-    md_justify("Ce projet Power BI vise à monitorer et analyser les dépenses de santé liées aux médicaments de ville." 
-               "L'objectif était d'identifier les tendances de consommation et les coûts associés afin d'optimiser la gestion des ressources de santé publique dans un contexte post-pandémique et inflationniste.<br><br>" 
-               "Les données exploitées proviennent de la plateforme publique <b>data.gouv.fr</b>.<br><br>"
-               "L'analyse s'appuie sur la classification ATC (Anatomique, Thérapeutique et Chimique) et explore les données à différents niveaux de granularité :<br>"
-               "- Classe thérapeutique<br>"
-               "- Classe pharmacologique<br>"
-               "- Classe chimique<br>"
-               "- Substance chimique<br><br>"
+# Configuration de la page
+st.set_page_config(
+    page_title="Portfolio - Analyse Médicaments",
+    page_icon="💊",
+    layout="wide"
 )
+
+# Titre Principal
+st.title("📊 Analyse des Coûts et Volumes des Médicaments Remboursés (2021-2024)")
+st.markdown("""
+**Contexte :** Ce projet Power BI vise à monitorer la soutenabilité des dépenses de santé liées aux médicaments de ville en France. 
+L'objectif est d'identifier les corrélations entre le volume de consommation et la charge financière réelle pour la Sécurité Sociale.
+""")
+
+st.divider()
+
+# --- SLIDE 1 : PANORAMA GÉNÉRAL ---
+st.header("1. Panorama : L'Effet Ciseaux et l'Inflation")
+
+col1, col2 = st.columns([2, 1])
+
+with col1:
+    st.image(panorama_path, caption="Tableau de bord - Vue Globale", use_column_width=True)
+    st.info("📸 *Insérez ici votre capture d'écran de la Slide 1 (Panorama)*")
+
+with col2:
+    st.subheader("🔎 Analyse & Insights")
+    st.markdown("""
+    **Méthodologie :**
+    *   **Analyse Temporelle (Dual Axis) :** Mise en parallèle du volume (boîtes) et de la valeur (montant remboursé).
+    *   **Indicateur de Coût Unitaire :** Suivi de l'évolution du prix moyen par boîte.
     
-    st.subheader("Méthodologie & Visualisation :")
-    md_justify("- Analyse temporelle : Mise en parallèle du volume (boîtes) et de la valeur (montant remboursé) pour repérer les décrochages. On note une saisonnalité marquées avec des pics hivernaux et des creux estivaux.<br>" 
-    "- Indicateur coût unitaire : Focus spécifique sur l'évolution du prix moyen part boîte, révélant une tendance inflationniste.<br>"
-    "- KPIs macro : Vue d'ensemble sur la période (94 Mrd€ de dépenses pour 9.3 Mrd de boîtes). <br>")
-
-    st.subheader("Insights Clés :")
-    md_justify("1. un effet 'Ciseaux' : ALors que les volumes semblent suivre une saisonnalité stable, le montant remboursé montre des pics de plus en plus hauts, suggérant que la hausse des dépenses n'est pas uniquement due à une surconsommation.<br>"
-               "2. Inflation du coût moyen : L'insight majeur est l'augmentation continue du prix moyen de la boîte remboursée, passant de 9.27€ en 2021 à 11.31€ en 2024, soit une augmentation de +22% en 4 ans. Cela soulève une question : consommons-nous des médicaments plus chers, ou les médicaments existants coûtent-ils plus cher?<br>")
-
-        # Chemins (depuis la racine du projet)
-    ROOT = Path(__file__).resolve().parents[1]
-    CLEAN = ROOT / "medicines" / "processed" / "plot"
-
-    # Panorama
-    img_path = CLEAN / "Panorama.png"
-    if img_path.exists():
-        st.subheader("Panorama")
-        # md_justify("Votre texte ici...")
-        st.image(str(img_path), use_column_width=True)
+    **Ce que les données racontent :**
+    1.  **L'Effet Ciseaux :** Alors que les volumes de consommation suivent une saisonnalité stable (~2,3 Mrd boîtes/an), la courbe des dépenses décroche vers le haut. La hausse des coûts n'est pas due à une "surconsommation" en volume.
+    2.  **Inflation Structurelle :** Le prix moyen de la boîte remboursée a bondi de **+22% en 4 ans**, passant de **9,27 € (2021)** à **11,31 € (2024)**.
     
-    st.markdown("---")
+    **Point de vigilance (Qualité de donnée) :**
+    *   *Note : Le périmètre d'analyse se concentre sur les médicaments disposant d'une classification ATC5 complète. Environ 1,7% des volumes (produits non classifiés ou hors nomenclature) ont été exclus pour garantir la précision de l'analyse thérapeutique.*
+    """)
+
+st.divider()
+
+# --- SLIDE 2 : CLASSES THÉRAPEUTIQUES ---
+st.header("2. Analyse Stratégique : La Loi de Pareto des Dépenses")
+
+col3, col4 = st.columns([2, 1])
+
+with col3:
+    # Remplacez 'slide2.png' par le chemin réel de votre image (celle avec le Scatter Plot amélioré)
+    # st.image("slide2.png", caption="Top Classes & Matrice Prix/Volume", use_column_width=True)
+    st.info("📸 *Insérez ici votre capture d'écran de la Slide 2 (Scatter Plot Logarithmique)*")
+
+with col4:
+    st.subheader("🔎 Analyse & Insights")
+    st.markdown("""
+    **Méthodologie :**
+    *   **Matrice Prix/Volume (Échelle Log) :** Segmentation des classes thérapeutiques pour isoler les profils de dépenses.
     
-    # Dépenses
-    img_path = CLEAN / "Depenses.png"
-    if img_path.exists():
-        st.subheader("Dépenses")
-        # md_justify("Votre texte ici...")
-        st.image(str(img_path), use_column_width=True)
-
-    st.markdown("---")
-
-    # Classes Thérapeutiques
-    img_path = CLEAN / "Classe_therapeutique.png"
-    if img_path.exists():
-        st.subheader("Classes Thérapeutiques")
-        # md_justify("Votre texte ici...")
-        st.image(str(img_path), use_column_width=True)
-
-    st.markdown("---")
-
-    # Focus sur les Classes Thérapeutiques
-    img_path = CLEAN / "Focus_classe_therapeutique.png"
-    if img_path.exists():
-        st.subheader("Focus sur les Classes Thérapeutiques")
-        # md_justify("Votre texte ici...")
-        st.image(str(img_path), use_column_width=True)
-
-    st.markdown("---")
-
-    # Synthèse
-    img_path = CLEAN / "Synthese.png"
-    if img_path.exists():
-        st.subheader("Synthèse")
-        # md_justify("Votre texte ici...")
-        st.image(str(img_path), use_column_width=True)
+    **Ce que les données racontent :**
+    1.  **Les "Poids Lourds" financiers :** Le classement est dominé par les **Immunosuppresseurs (11,2 Md€)** et les **Antinéoplasiques (10,9 Md€)**. Ce sont des traitements de spécialité coûteux.
+    2.  **Stabilité des dépenses :** Le Top 5 des postes de dépenses reste remarquablement stable sur 4 ans, indiquant une forte inertie structurelle.
     
-    st.markdown("---")
+    3.  **La Dichotomie du Marché (Lecture du Graphique) :**
+        *   **La diagonale du vide :** L'échelle logarithmique révèle une corrélation inverse claire : plus un médicament est cher, moins il est prescrit en volume.
+        *   **Les anomalies (Outliers) :** On repère immédiatement les exceptions comme l'**Apixaban** (point rouge isolé au-dessus de la tendance), qui représente un compromis volume/prix très coûteux pour l'Assurance Maladie.
+    """)
 
+# Pied de page
+st.divider()
+st.markdown("---")
+st.caption("Projet réalisé par Antoine Dhelft | Données Open Data Assurance Maladie (2021-2024)")
