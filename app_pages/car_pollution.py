@@ -37,7 +37,7 @@ def render():
         import pandas as pd
         import matplotlib.pyplot as plt
         import seaborn as sns
-    except Exception as e:  # pragma: no cover
+    except Exception as e:  
         st.error("Modules requis manquants pour l'analyse (installez streamlit, pandas, numpy, matplotlib, seaborn).")
         st.stop()
 
@@ -63,7 +63,7 @@ def render():
         buf = _io.BytesIO()
         fig.savefig(buf, format="png", dpi=dpi, bbox_inches="tight")
         buf.seek(0)
-        st.image(buf, width=width)
+        st.image(buf, use_column_width=True)
         plt.close(fig)
 
     # Chemins (depuis la racine du projet)
@@ -96,7 +96,7 @@ def render():
     col_l, col_c, col_r = st.columns([1, 2, 1])
     with col_c:
         if pgr_path.exists():
-            st.image(str(pgr_path), width=800)
+            st.image(str(pgr_path), use_column_width=True)
         else:
             # Fallback: scatter compact des moyennes PGR vs NOx par énergie
             if {"Energie", "PGR_cumul", "Essai_Nox"}.issubset(df.columns):
@@ -340,7 +340,7 @@ def render():
     _buf = _io.BytesIO()
     fig3.savefig(_buf, format="png", dpi=110, bbox_inches="tight")
     _buf.seek(0)
-    st.image(_buf, width=600)  # largeur contrôlée, réduit le "rectangle blanc"
+    st.image(_buf, use_column_width=True)  # largeur contrôlée, réduit le "rectangle blanc"
     plt.close(fig3)
 
     st.write("- Les véhicules essence et diesel sont les plus vendus, et pourtant ce ne sont pas les moins polluants. ")
