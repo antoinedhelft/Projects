@@ -40,15 +40,15 @@ PAGES = {
 selection = st.sidebar.radio("Aller à", list(PAGES.keys()), index=0)
 
 # Conserver la sélection dans l’URL si elle est prise en charge (au mieux, sans erreur fatale)
-try:
-    # Newer Streamlit versions
-    st.query_params["page"] = selection
-except Exception:
-    try:
-        # Backward-compatible API
-        st.experimental_set_query_params(page=selection)
-    except Exception:
-        pass
+# try:
+#     # Newer Streamlit versions
+#     st.query_params["page"] = selection
+# except Exception:
+#     try:
+#         # Backward-compatible API
+#         st.experimental_set_query_params(page=selection)
+#     except Exception:
+#         pass
 
 # Render selected page
 PAGES[selection]()
