@@ -112,7 +112,7 @@ def render():
     col7, col8 = st.columns([2, 1])
 
     with col7:
-        if focus_path.exists():
+        if depenses_path.exists():
              st.image(str(depenses_path), caption="Analyse détaillée du Top 5", use_column_width=True)
         else:
              st.warning(f"Image non trouvée : {depenses_path}")
