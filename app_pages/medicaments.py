@@ -113,7 +113,7 @@ def render():
 
     with col7:
         if depenses_path.exists():
-             st.image(str(depenses_path), caption="Analyse détaillée du Top 5", use_column_width=True)
+             st.image(str(depenses_path), caption="Analyse des Dépenses par Substances chimiques", use_column_width=True)
         else:
              st.warning(f"Image non trouvée : {depenses_path}")
 
@@ -157,15 +157,55 @@ def render():
         **Choix méthodologiques :**
         * Pour les **montants totaux**, le dashboard affiche `SUM(Montant_remboursé)` tel que publié dans la base publique :  
         cela reflète la **dépense comptable enregistrée** par l’Assurance Maladie, même si certains montants peuvent être inférieurs à ce qu’ils “devraient” être en théorie.
-        * Pour les **prix moyens par boîte**, une mesure dédiée (non montrée ici mais utilisée ailleurs dans le rapport) ne tient compte que des **lignes effectivement remboursées** (`Montant_remboursé > 0`), afin d’éviter de mélanger :
-            * les boîtes réellement prises en charge par l’AMO,
-            * et les délivrances hors remboursement (0 €) ou manifestement mal codées.
+
 
         Ce cas illustre l’importance de :
-        * confronter les données Open Data à la réalité médico‑économique,
-        * documenter les limites et anomalies repérées,
-        * et adapter les indicateurs (ici, les prix moyens) pour qu’ils restent interprétables.
+        * Confronter les données Open Data à la réalité médico‑économique.
+        * Documenter les limites et anomalies repérées.
         """)
+
+    st.divider()
+
+    # --- SLIDE 5 : SYNTHÈSE & ENJEUX ---
+    st.header("5. Synthèse et enjeux")
+
+    col9, col10 = st.columns([2, 1])
+
+    with col9:
+        if synthese_path.exists():
+             st.image(str(synthese_path), caption="Volume vs Pris moyen (échelle log) - Synthèse globale", use_column_width=True)
+        else:
+             st.warning(f"Image non trouvée : {synthese_path}")
+
+
+    with col10:
+        st.subheader("🔎 Analyse & Insights")
+        st.markdown("""
+        **Méthodologie :**
+        *   **Nuage de points Volume × Prix (double échelle logarithmique) :**  
+            Chaque point représente une **substance chimique** :
+            *   Axe X : **prix moyen par boîte** (échelle log, de ~1 € à > 10 000 €) ;
+            *   Axe Y : **nombre de boîtes remboursées** (échelle log) ;
+            *   Couleur : **montant total remboursé** (du bleu clair au rouge) ;
+            *   Taille : **niveau de dépense** (bulles plus grosses = molécules plus coûteuses).
+        *   **Repère vertical :** une ligne en pointillés matérialise le **prix moyen global d’une boîte (≈ 10,27 €)**, qui permet de comparer instantanément les molécules “bon marché” aux traitements très onéreux.
+
+        **Ce que les données racontent :**
+        1.  **Une diagonale prix/volume très marquée :**  
+            Le nuage forme une diagonale descendante :  
+            plus le **prix par boîte** augmente, plus le **volume remboursé** diminue.  
+            Cela illustre une loi économique intuitive : les traitements très coûteux sont réservés à un plus petit nombre de patients, tandis que les médicaments du quotidien (antalgiques, antibiotiques courants, antidiabétiques…) sont bon marché mais délivrés à grande échelle.
+        2.  **Les extrêmes qui structurent la dépense :**  
+            *   En haut à gauche, on retrouve des molécules **très volumineuses mais peu chères**, comme le **Paracétamol**, qui génèrent des montants importants uniquement par l’effet volume.  
+            *   À droite, au‑delà du prix moyen global, apparaissent les **traitements de spécialité** (anticancéreux, biothérapies, anticoagulants oraux directs).  
+                Certaines bulles rouges isolées (ex. **Apixaban**) combinent **prix élevé** et **volume significatif**, ce qui en fait des contributeurs majeurs à la dépense.
+        3.  **Une vision globale des enjeux :**  
+            Cette synthèse met en évidence que :
+            *   la maîtrise des coûts ne peut pas se limiter aux “gros volumes” ni seulement aux “médicaments chers” ;  
+            *   les principaux enjeux budgétaires se situent **à l’intersection** :  
+                *molécules assez chères pour peser en prix, suffisamment prescrites pour peser en volume*.
+        """)
+
 
     # Pied de page
     st.divider()
