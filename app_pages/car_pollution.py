@@ -5,7 +5,7 @@ def md_justify(txt: str):
     st.markdown(f"<div style='text-align: justify'>{txt}</div>", unsafe_allow_html=True)
 
 def render():
-    st.title("Pollution VL")
+    st.title("Pollution Véhicules Légers")
     st.markdown("---")
 
     st.subheader("Contexte du projet")
@@ -221,6 +221,8 @@ def render():
     with col_plot:
         _render_fig_as_image(fig, width=1200, pad=0.5, bottom_adjust=0.18)
 
+    st.divider()
+
     # === Classement du GPR moyen par marque ===
     st.markdown("---")
     st.subheader("Classement du PGR moyen par marque et par type d'énergie")
@@ -328,7 +330,8 @@ def render():
         st.write("- Pour les véhicules essence, les marques les plus vendues sont parmi celles qui affichent le PRG le plus faible. ")
         st.write("- Quant aux véhicules diesel hybrides rechargeables, même si peu de marques ont développé ce type de moteur, on observe que les trois marques les plus vendues dans cette catégorie ne sont pas celles qui présentent le PRG le plus faible (à l'exception de Mercedes). ")
 
-    
+    st.divider()
+
     # Répartition par type d'énergie
     fig3, ax3 = plt.subplots(figsize=(6, 3.2), dpi=110)
     sns.countplot(
