@@ -93,8 +93,13 @@ def render():
     # 1) Plot du cumule PGR vs NOx par type d'énergie
 
     pgr_path = CLEAN.parent / "plots" / "PGR_cumul.png"
-    col_l, col_c, col_r = st.columns([1, 2, 1])
-    with col_c:
+    
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        md_justify("Nous pouvons observer que les meilleures combinaisons de NOX et de PGR concernent les véhicules hybride/essence, hybride rechargeable essence, essence et diesel hybride rechargeable.")
+    
+    with col2:
         if pgr_path.exists():
             st.image(str(pgr_path), use_column_width=True)
         else:
@@ -129,8 +134,6 @@ def render():
                 _render_fig_as_image(fig_s, width=1200, pad=0.4)
             else:
                 st.info("Image des moyennes PGR vs NOx non trouvée et colonnes manquantes pour recalculer le graphe.")
-
-    md_justify("Nous pouvons observer que les meilleures combinaisons de NOX et de PGR concernent les véhicules hybride/essence, hybride rechargeable essence, essence et diesel hybride rechargeable.")
     # 2) Plot du nombre de véhicules vendus par marque et énergie les moins polluantes
 
     st.markdown("---")
@@ -205,14 +208,18 @@ def render():
     else:
         axes[1,1].set_visible(False)
 
-    _render_fig_as_image(fig, width=1200, pad=0.5, bottom_adjust=0.18)
+    col_text, col_plot = st.columns([1, 1])
+    
+    with col_text:
+        md_justify("On remarque que les 3 marques les plus vendues pour les véhicules hybride rechargeables essence ou diesel sont Volvo, Mercedes et BMW. " \
+        "Pour les véhicules hybrides essence non rechargeables, les marques les plus vendues sont Renault, BMW et Ford. " \
+        "Et pour les véhicules essence seuls, les marques les plus vendues sont BMW, Mini et Skoda.")
+        md_justify("")
+        md_justify("On va donc étudier quels sont leur PGR respectifs afin de voir si les véhicules les plus vendus sont aussi les moins polluants.")
+        st.caption("Avez vous remarqué que BMW est dans le top des ventes pour les 4 motorisations?")
 
-    md_justify("On remarque que les 3 marques les plus vendues pour les véhicules hybride rechargeables essence ou diesel sont Volvo, Mercedes et BMW. " \
-    "Pour les véhicules hybrides essence non rechargeables, les marques les plus vendues sont Renault, BMW et Ford. " \
-    "Et pour les véhicules essence seuls, les marques les plus vendues sont BMW, Mini et Skoda.")
-    md_justify("")
-    md_justify("On va donc étudier quels sont leur PGR respectifs afin de voir si les véhicules les plus vendus sont aussi les moins polluants.")
-    st.caption("Avez vous remarqué que BMW est dans le top des ventes pour les 4 motorisations?")
+    with col_plot:
+        _render_fig_as_image(fig, width=1200, pad=0.5, bottom_adjust=0.18)
 
     # === Classement du GPR moyen par marque ===
     st.markdown("---")
@@ -312,10 +319,14 @@ def render():
     _render_fig_as_image(fig2, width=1200, pad=0.7, bottom_adjust=0.18)
 
     st.subheader("Observations")
-    st.write("- On constate que les marques vendant le plus de véhicules essence hybrides rechargeables figurent parmi les plus performantes en termes de PRG. ")
-    st.write("- À l'inverse, pour les véhicules essence non hybrides rechargeables, les trois marques les plus vendues se situent plutôt en bas du classement PRG (à l'exception de BMW). ")
-    st.write("- Pour les véhicules essence, les marques les plus vendues sont parmi celles qui affichent le PRG le plus faible. ")
-    st.write("- Quant aux véhicules diesel hybrides rechargeables, même si peu de marques ont développé ce type de moteur, on observe que les trois marques les plus vendues dans cette catégorie ne sont pas celles qui présentent le PRG le plus faible (à l'exception de Mercedes). ")
+    
+    col_obs, col_repart = st.columns([1, 1])
+    
+    with col_obs:
+        st.write("- On constate que les marques vendant le plus de véhicules essence hybrides rechargeables figurent parmi les plus performantes en termes de PRG. ")
+        st.write("- À l'inverse, pour les véhicules essence non hybrides rechargeables, les trois marques les plus vendues se situent plutôt en bas du classement PRG (à l'exception de BMW). ")
+        st.write("- Pour les véhicules essence, les marques les plus vendues sont parmi celles qui affichent le PRG le plus faible. ")
+        st.write("- Quant aux véhicules diesel hybrides rechargeables, même si peu de marques ont développé ce type de moteur, on observe que les trois marques les plus vendues dans cette catégorie ne sont pas celles qui présentent le PRG le plus faible (à l'exception de Mercedes). ")
 
     
     # Répartition par type d'énergie
@@ -340,11 +351,13 @@ def render():
     _buf = _io.BytesIO()
     fig3.savefig(_buf, format="png", dpi=110, bbox_inches="tight")
     _buf.seek(0)
-    st.image(_buf, use_column_width=True)  # largeur contrôlée, réduit le "rectangle blanc"
-    plt.close(fig3)
+    
+    with col_repart:
+        st.image(_buf, use_column_width=True)  # largeur contrôlée, réduit le "rectangle blanc"
+        plt.close(fig3)
 
-    st.write("- Les véhicules essence et diesel sont les plus vendus, et pourtant ce ne sont pas les moins polluants. ")
-    st.write("- Viennent ensuite les véhicules hybrides rechargeables diesel et essence.")
+        st.write("- Les véhicules essence et diesel sont les plus vendus, et pourtant ce ne sont pas les moins polluants. ")
+        st.write("- Viennent ensuite les véhicules hybrides rechargeables diesel et essence.")
     st.write(" ")
     st.header("Conclusion")
     st.write("- Les consommateurs n'achètent pas nécessairement les véhicules les moins polluants, puisque ce sont toujours les véhicules diesel ou essence qui restent les plus vendus.")
