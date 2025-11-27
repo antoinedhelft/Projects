@@ -224,7 +224,7 @@ def render():
     st.divider()
 
     # === Classement du GPR moyen par marque ===
-    st.markdown("---")
+
     st.subheader("Classement du PGR moyen par marque et par type d'énergie")
 
     # Vérifs colonnes nécessaires
