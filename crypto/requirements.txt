@@ -1,0 +1,9 @@
+# Dépendances pour le projet Crypto Serverless
+
+-r scripts/data_pipeline/requirements.txt
+-r scripts/ml_pipeline/requirements.txt
+-r app_streamlit/requirements.txt
+
+# Outils supplémentaires
+python-dotenv
+huggingface_hub
