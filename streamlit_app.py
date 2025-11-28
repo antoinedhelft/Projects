@@ -25,14 +25,14 @@ st.markdown(
 # Importations différées pour éviter les problèmes de boucle si Streamlit surveille les fichiers
 from app_pages.accueil import render as render_accueil  # type: ignore
 from app_pages.medicaments import render as render_medicaments  # type: ignore
-#from app_pages.crypto import render as render_crypto  # type: ignore
+from app_pages.crypto import render as render_crypto  # type: ignore
 from app_pages.car_pollution import render as render_car_pollution  # type: ignore
 #from app_pages.trail import render as render_trail  # type: ignore
 
 PAGES = {
     "Accueil": render_accueil,
     "Médicaments": render_medicaments,
-    #"Crypto": render_crypto,
+    "Crypto": render_crypto,
     "Pollution VL": render_car_pollution,
     #"Trail": render_trail
 }
