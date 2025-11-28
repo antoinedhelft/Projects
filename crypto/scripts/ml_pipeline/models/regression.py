@@ -42,8 +42,9 @@ def train_regressor(df_features, features_path, model_path, train_mask=None):
     r2 = r2_score(y_test, preds)
     print(f"Linear Regression MAE: {mae:.4f}, R2: {r2:.4f}")
 
-    # Ré-entraînement sur l'ensemble des données pour la prod
-    model.fit(X, y)
+    # --- MODIFICATION: Pas de Refit sur tout le dataset ---
+    # On sauvegarde le modèle entraîné uniquement sur le Train Set (2021-2023)
+    # model.fit(X, y)
 
     # Sauvegarde
     joblib.dump(model, model_path)

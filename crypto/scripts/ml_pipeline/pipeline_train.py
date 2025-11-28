@@ -105,13 +105,29 @@ def main():
         print(f"[DEBUG] Colonnes: {list(df_features.columns)}")
         sys.stdout.flush()
         
-        # Construire un masque d'entraînement chrono par symbole (~80% par symbole)
-        df_tmp = df_features.copy()
-        df_tmp['row_idx'] = df_tmp.groupby('symbol').cumcount()
-        df_tmp['grp_size'] = df_tmp.groupby('symbol')['symbol'].transform('size')
-        df_tmp['train_cut'] = (df_tmp['grp_size'] * 0.8).astype(int)
-        train_mask = df_tmp['row_idx'] < df_tmp['train_cut']
-        df_tmp = df_tmp.drop(columns=['row_idx', 'grp_size', 'train_cut'])
+        # --- MODIFICATION: Split Temporel Strict (Train < 2024, Test >= 2024) ---
+        # On coupe à une date fixe pour simuler un vrai déploiement fin 2023
+        # et tester sur 2024 (Out-Of-Sample)
+        cutoff_date = pd.Timestamp("2024-01-01")
+        
+        # Gestion timezone (si l'index est tz-aware, on adapte le cutoff)
+        if df_features.index.tz is not None:
+            cutoff_date = cutoff_date.tz_localize(df_features.index.tz)
+            
+        train_mask = df_features.index < cutoff_date
+        
+        print(f"[DEBUG] Split Temporel: Cutoff={cutoff_date}")
+        print(f"[DEBUG] Train size: {train_mask.sum()} | Test size: {(~train_mask).sum()}")
+        
+        if train_mask.sum() == 0 or (~train_mask).sum() == 0:
+            print("[WARN] Le split temporel a donné un set vide. Vérifiez les dates.")
+            # Fallback sur 80/20 si problème de date
+            print("[WARN] Fallback sur split 80/20 séquentiel.")
+            df_tmp = df_features.copy()
+            df_tmp['row_idx'] = df_tmp.groupby('symbol').cumcount()
+            df_tmp['grp_size'] = df_tmp.groupby('symbol')['symbol'].transform('size')
+            df_tmp['train_cut'] = (df_tmp['grp_size'] * 0.8).astype(int)
+            train_mask = df_tmp['row_idx'] < df_tmp['train_cut']
 
     # Aucun clipping de la cible. On conserve toute l'amplitude des prix
     # pour éviter de plafonner artificiellement des actifs comme BTCUSDT.

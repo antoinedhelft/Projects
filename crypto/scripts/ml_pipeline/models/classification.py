@@ -70,8 +70,11 @@ def train_classifier(df_features, features_path, model_path, train_mask=None):
     print("Rapport de classification final:")
     print(classification_report(y_test, y_pred, target_names=['Baisse', 'Stable', 'Hausse']))
 
-    # Refit sur toutes les données pour la sauvegarde
-    model.fit(X, y)
+    # --- MODIFICATION: Pas de Refit sur tout le dataset ---
+    # On sauvegarde le modèle entraîné uniquement sur le Train Set (2021-2023)
+    # pour que le backtest sur 2024 soit honnête (Out-Of-Sample).
+    # model.fit(X, y) 
+    
     joblib.dump(model, str(model_path))
 
     # Retourne aussi des infos utiles pour le backtest (OOS)

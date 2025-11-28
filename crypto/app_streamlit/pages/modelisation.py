@@ -636,6 +636,10 @@ def render():
                 sym_b = st.selectbox("Symbole (clf)", symbols, index=0, key="ml4_bt_sym")
             with colb3:
                 fee = st.slider("Frais (bps)", 0, 50, 10, help="1 bps = 0.01% – appliqués aux changements de position") / 10000.0
+            
+            # Ajout du seuil de confiance
+            threshold = st.slider("Seuil de confiance (proba)", 0.34, 0.95, 0.50, step=0.01, help="Probabilité minimale pour prendre position (sinon Hold)")
+            
             init_cap = st.number_input("Capital initial (USDT)", min_value=100.0, max_value=1000000.0, value=1000.0, step=100.0)
             try:
                 bundle = get_models_and_features()
@@ -647,14 +651,31 @@ def render():
                     df = load_candles(sym_b, years=years_need)
                     dfl = df[df["timestamp"] >= (pd.Timestamp.utcnow() - pd.DateOffset(months=months_eval_bt))]
                     dff = compute_features(dfl).dropna().reset_index(drop=True)
-                    # Prédire classes
+                    
+                    # Prédire classes avec probabilités
                     Xc = dff[bundle["clf_feats"]]
-                    raw_pred = bundle["clf_model"].predict(Xc)
-                    # Convertir en natifs
-                    preds_idx = [int(getattr(v, 'item', lambda: v)()) if hasattr(v, 'item') else int(v) for v in raw_pred]
-                    # Map classes -> signaux
-                    label_to_signal = {0: 'Sell', 1: 'Hold', 2: 'Buy'}
-                    signals = [label_to_signal.get(v, 'Hold') for v in preds_idx]
+                    
+                    if hasattr(bundle["clf_model"], "predict_proba"):
+                        # Si le modèle supporte les probas (RandomForest le fait)
+                        probas = bundle["clf_model"].predict_proba(Xc)
+                        # probas est un tableau (N, 3) -> [Prob_Baisse, Prob_Stable, Prob_Hausse]
+                        
+                        signals = []
+                        for p in probas:
+                            # p[0]=Baisse, p[1]=Stable, p[2]=Hausse
+                            if p[2] >= threshold:
+                                signals.append('Buy')
+                            elif p[0] >= threshold:
+                                signals.append('Sell')
+                            else:
+                                signals.append('Hold')
+                    else:
+                        # Fallback si pas de probas (ex: SVM simple)
+                        raw_pred = bundle["clf_model"].predict(Xc)
+                        preds_idx = [int(getattr(v, 'item', lambda: v)()) if hasattr(v, 'item') else int(v) for v in raw_pred]
+                        label_to_signal = {0: 'Sell', 1: 'Hold', 2: 'Buy'}
+                        signals = [label_to_signal.get(v, 'Hold') for v in preds_idx]
+
                     # Construire positions -1/0/+1 et calculer equity
                     price = dff["close_price"].reset_index(drop=True)
                     ts = dff["timestamp"].reset_index(drop=True)
