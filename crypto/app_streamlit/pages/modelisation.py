@@ -13,6 +13,7 @@ import joblib
 import subprocess
 import sys
 from huggingface_hub import hf_hub_download
+import ta
 
 # st.set_page_config(page_title="4 - Modélisation & Machine Learning", layout="wide")
 
@@ -117,32 +118,43 @@ def compute_features(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
     df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
     df = df.sort_values("timestamp").reset_index(drop=True)
-    price = df["close_price"]
-    for k in range(1, 6):
-        df[f"price_lag_{k}h"] = price.shift(k)
-        df[f"volume_lag_{k}h"] = df["volume_base"].shift(k)
-    df["rolling_mean_24h"] = price.rolling(24, min_periods=12).mean()
-    df["rolling_mean_72h"] = price.rolling(72, min_periods=36).mean()
-    delta = price.diff()
-    gain = (delta.clip(lower=0)).rolling(14, min_periods=7).mean()
-    loss = (-delta.clip(upper=0)).rolling(14, min_periods=7).mean()
-    rs = gain / loss.replace(0, np.nan)
-    df["rsi"] = 100 - (100 / (1 + rs))
-    ema12 = price.ewm(span=12, adjust=False).mean()
-    ema26 = price.ewm(span=26, adjust=False).mean()
-    macd = ema12 - ema26
-    signal = macd.ewm(span=9, adjust=False).mean()
-    df["macd_diff"] = macd - signal
-    prev_close = price.shift(1)
-    tr = pd.concat([
-        (df["high_price"] - df["low_price"]),
-        (df["high_price"] - prev_close).abs(),
-        (df["low_price"] - prev_close).abs()
-    ], axis=1).max(axis=1)
-    df["atr"] = tr.rolling(14, min_periods=7).mean()
+    
+    # --- 1. Transformation en Rendements (Log Returns) ---
+    df['log_return'] = np.log(df['close_price'] / df['close_price'].shift(1))
+    
+    # --- 2. Lags de Rendements ---
+    for lag in range(1, 6):
+        df[f'return_lag_{lag}h'] = df['log_return'].shift(lag)
+        # Volume relatif
+        df[f'vol_relative_lag_{lag}h'] = (df['volume_base'].shift(lag) / 
+                                        df['volume_base'].rolling(window=24).mean().shift(lag))
+
+    # --- 3. Indicateurs Techniques Normalisés ---
+    # RSI
+    df['rsi'] = ta.momentum.RSIIndicator(df['close_price']).rsi()
+    
+    # MACD Diff Normalisé
+    macd = ta.trend.MACD(df['close_price'])
+    df['macd_diff_normalized'] = macd.macd_diff() / df['close_price']
+    
+    # ATR Normalisé
+    atr = ta.volatility.AverageTrueRange(df['high_price'], df['low_price'], df['close_price'])
+    df['atr_pct'] = atr.average_true_range() / df['close_price']
+    
+    # Bandes de Bollinger
+    bb_indicator = ta.volatility.BollingerBands(close=df["close_price"], window=20, window_dev=2)
+    df['bb_pband'] = bb_indicator.bollinger_pband()
+    df['bb_width'] = bb_indicator.bollinger_wband()
+    
+    # Distance SMA
+    df['dist_sma_24h'] = (df['close_price'] - df['close_price'].rolling(window=24).mean()) / df['close_price']
+
+    # Caractéristiques temporelles
     ts = pd.to_datetime(df["timestamp"])
-    df["hour_of_day"] = ts.dt.hour
-    df["day_of_week"] = ts.dt.dayofweek
+    df['hour_sin'] = np.sin(2 * np.pi * ts.dt.hour / 24)
+    df['hour_cos'] = np.cos(2 * np.pi * ts.dt.hour / 24)
+    df['day_of_week'] = ts.dt.dayofweek
+    
     df["target_price"] = df["close_price"].shift(-1)
     return df
 
@@ -328,7 +340,10 @@ def render():
                         st.warning("⚠️ Modèles introuvables. Veuillez configurer HF_TOKEN/HF_REPO_ID dans les Secrets et uploader les modèles (.joblib) sur Hugging Face, ou les placer dans `crypto/algo_crypto`.")
                     else:
                         Xr = last_row[bundle["reg_feats"]]
-                        y_next_pred = float(bundle["reg_model"].predict(Xr)[0])
+                        # Le modèle prédit maintenant le log_return
+                        log_return_pred = float(bundle["reg_model"].predict(Xr)[0])
+                        y_next_pred = last_close * np.exp(log_return_pred)
+                        
                         abs_delta = y_next_pred - last_close
                         pct_delta = (abs_delta / last_close * 100.0) if last_close else 0.0
                         delta_str = f"{abs_delta:+.2f} ({pct_delta:+.2f}%) vs close(t)"
