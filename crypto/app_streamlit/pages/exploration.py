@@ -50,42 +50,42 @@ def render():
         - 🧩 Données tabulaires structurées : timestamps, prix, volumes, trades   
         """)
 
-with tabs[3]:
-    st.header("2.4 Variables pertinentes et variable(s) cible(s)")
+    with tabs[3]:
+        st.header("2.4 Variables pertinentes et variable(s) cible(s)")
 
-    st.markdown(
-    """
+        st.markdown(
+        """
+        
+        Les principales variables exploitées sont :
+
+        🕒 Temporelle
+        - open_time, close_time
+        - Début et fin de la période
+
+        💰 Marché
+        - open, high, low, close
+        - Prix d’ouverture, haut, bas et fermeture
+
+        📊 Activité
+        - volume, number_of_trades
+        - Volume échangé et nombre de transactions
+
+    💵 Takers
+        - taker_buy_base_volume, taker_buy_quote_volume
+        - Volumes achetés par les acteurs du marché
     
-    Les principales variables exploitées sont :
+        """)
 
-    🕒 Temporelle
-    - open_time, close_time
-    - Début et fin de la période
+    with tabs[4]:
+        st.header("2.5 Prétraitements et feature engineering (nettoyage, normalisation, enrichissement)")
 
-    💰 Marché
-    - open, high, low, close
-    - Prix d’ouverture, haut, bas et fermeture
+        st.markdown(
+        """
+        
+        ### ✅ Points clés à afficher :
+        - ✅ Données Binance déjà propres et exploitables  
+        - 🕒 Conversion des timestamps → `datetime`  
+        - 🔍 Vérification doublons / types / cohérence   
+        """)
 
-    📊 Activité
-    - volume, number_of_trades
-    - Volume échangé et nombre de transactions
-
-💵 Takers
-    - taker_buy_base_volume, taker_buy_quote_volume
-    - Volumes achetés par les acteurs du marché
-   
-    """)
-
-with tabs[4]:
-    st.header("2.5 Prétraitements et feature engineering (nettoyage, normalisation, enrichissement)")
-
-    st.markdown(
-    """
-    
-    ### ✅ Points clés à afficher :
-    - ✅ Données Binance déjà propres et exploitables  
-    - 🕒 Conversion des timestamps → `datetime`  
-    - 🔍 Vérification doublons / types / cohérence   
-    """)
-
-st.caption("Page 2 – Exploration des données")
+    st.caption("Page 2 – Exploration des données")
