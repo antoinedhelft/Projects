@@ -4,3 +4,15 @@ numpy==2.2.5
 matplotlib==3.10.1
 seaborn==0.13.2
 Unidecode==1.4.0
+
+# Crypto Project Dependencies
+python-dotenv
+huggingface_hub
+SQLAlchemy>=2.0.30
+psycopg2-binary>=2.9.9
+lightgbm
+joblib
+scikit-learn
+plotly
+requests>=2.31.0
+ta
