@@ -392,26 +392,10 @@ def render():
         except Exception as e:
             st.error(f"Prédiction indisponible: {e}")
 
-        st.subheader("Recherche d’Hyperparamètres & Déploiement")
-        
-        col_search, col_metrics, col_save = st.columns(3)
-        
-        with col_search:
-            st.markdown("### 1. Stratégie")
-            st.markdown("💡 **RandomizedSearchCV** (Rapide)")
-            st.caption("Balance entre performance et temps de calcul.")
-
-        with col_metrics:
-            st.markdown("### 2. Métriques de Sélection")
-            
-            metrics_df = pd.DataFrame({
-                "Tâche": ["Régression", "Classification"],
-                "Critères": ["MAE / NMAE", "F1 / Accuracy"]
-            })
-            st.dataframe(metrics_df, hide_index=True)
+        col_save = st.sidebar
 
         with col_save:
-            st.markdown("### 3. Persistance")
+            st.markdown("### Persistance")
             st.markdown("💾 **Hugging Face Hub** 🤗")
             st.caption("Stockage des modèles dans le cloud (gratuit).")
             # Afficher les derniers modèles enregistrés dans le volume models_data
@@ -551,41 +535,6 @@ def render():
             hist.update_layout(height=280)
             st.plotly_chart(hist, use_container_width=True)
 
-
-            st.subheader("Artefacts les plus récents")
-            reg_model_path, clf_model_path, reg_feat_path, clf_feat_path = list_latest_artifacts()
-            if not all([reg_model_path, clf_model_path, reg_feat_path, clf_feat_path]):
-                st.warning("Certains artefacts (modèles ou features) sont manquants dans le dossier algo_crypto.")
-            else:
-                def fmt(p):
-                    try:
-                        ts = datetime.fromtimestamp(p.stat().st_mtime)
-                        return f"{p.name} (modifié: {ts:%Y-%m-%d %H:%M:%S})"
-                    except Exception:
-                        return str(p)
-                colA, colB = st.columns(2)
-                with colA:
-                    st.write("Régression:")
-                    st.write("• Modèle:", fmt(reg_model_path))
-                    st.write("• Features:", fmt(reg_feat_path))
-                with colB:
-                    st.write("Classification:")
-                    st.write("• Modèle:", fmt(clf_model_path))
-                    st.write("• Features:", fmt(clf_feat_path))
-
-                with st.expander("Chargement rapide des modèles (sanity check)"):
-                    try:
-                        reg_model = joblib.load(reg_model_path)
-                        clf_model = joblib.load(clf_model_path)
-                        with open(reg_feat_path, 'r') as f:
-                            reg_feats = json.load(f)
-                        with open(clf_feat_path, 'r') as f:
-                            clf_feats = json.load(f)
-                        c1, c2 = st.columns(2)
-                        c1.write(f"Régression: {type(reg_model).__name__} – {len(reg_feats)} features")
-                        c2.write(f"Classification: {type(clf_model).__name__} – {len(clf_feats)} features")
-                    except Exception as e:
-                        st.error(f"Erreur chargement modèles: {e}")
 
 
     with tabs[3]:

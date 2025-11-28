@@ -1,4 +1,4 @@
-from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report
 import joblib
 import json
@@ -9,7 +9,8 @@ import shutil
 
 
 def train_classifier(df_features, features_path, model_path, train_mask=None):
-    """Entrainement de la classification Logistique (plus léger que LightGBM).
+    """Entrainement de la classification avec Random Forest.
+    Plus robuste que la régression logistique, mais reste léger avec des hyperparamètres contrôlés.
     """
 
     # Caractéristiques (exclusion des colonnes de data leakage)
@@ -44,10 +45,18 @@ def train_classifier(df_features, features_path, model_path, train_mask=None):
         X_train, y_train = X.iloc[:split_point], y.iloc[:split_point]
         X_test, y_test = X.iloc[split_point:], y.iloc[split_point:]
 
-    # Modèle Logistique
-    print("Training Logistic Regression...")
-    # max_iter augmenté pour assurer la convergence
-    model = LogisticRegression(multi_class='multinomial', max_iter=1000, random_state=42, class_weight='balanced')
+    # Modèle Random Forest
+    print("Training Random Forest Classifier...")
+    # n_estimators=100 et max_depth=15 pour garder le modèle léger (< 50 Mo) tout en capturant la non-linéarité
+    model = RandomForestClassifier(
+        n_estimators=100, 
+        max_depth=15, 
+        min_samples_split=10,
+        min_samples_leaf=5,
+        random_state=42, 
+        class_weight='balanced',
+        n_jobs=-1
+    )
     model.fit(X_train, y_train)
 
     # Evaluation sur le test

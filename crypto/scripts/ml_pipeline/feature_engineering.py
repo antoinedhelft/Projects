@@ -32,6 +32,14 @@ def build_features(df_raw: pd.DataFrame):
         # Un ATR élevé indique une forte volatilité, un ATR faible indique une faible volatilité.
         df['atr'] = ta.volatility.AverageTrueRange(df['high_price'], df['low_price'], df['close_price']).average_true_range()
         
+        # Bandes de Bollinger (Volatilité + Tendance)
+        bb_indicator = ta.volatility.BollingerBands(close=df["close_price"], window=20, window_dev=2)
+        df['bb_bbm'] = bb_indicator.bollinger_mavg()
+        df['bb_bbh'] = bb_indicator.bollinger_hband()
+        df['bb_bbl'] = bb_indicator.bollinger_lband()
+        # Position relative dans les bandes (0 = bande basse, 1 = bande haute)
+        df['bb_pband'] = bb_indicator.bollinger_pband()
+        
         # Caractéristiques temporelles
         df['hour_of_day'] = df.index.hour
         df['day_of_week'] = df.index.dayofweek
