@@ -2,6 +2,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error, r2_score
 import joblib
 import json
+import numpy as np
 
 def train_regressor(df_features, features_path, model_path, train_mask=None):
     """Entraînement de la régression Linéaire (plus léger que LightGBM).
@@ -10,7 +11,10 @@ def train_regressor(df_features, features_path, model_path, train_mask=None):
     # Caractéristiques (exclusion des colonnes de data leakage)
     features_reg = [col for col in df_features.columns if col not in ['symbol', 'target_price', 'close_price']]
     X = df_features[features_reg]
-    y = df_features['target_price']
+    
+    # Cible : Log Return futur (Stationnaire)
+    # On prédit la variation, pas le prix absolu
+    y = np.log(df_features['target_price'] / df_features['close_price'])
 
     print(f"[DEBUG] Features ({len(features_reg)}): {features_reg}")
 

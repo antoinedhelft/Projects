@@ -90,8 +90,10 @@ def predict_symbol(symbol: str):
         # Construire les caractéristiques depuis la BDD
         feat_data = latest_feature_row(symbol)
         
-        # Prédiction régression
-        reg_pred = reg_model.predict([feat_data["regressor_vector"]])[0]
+        # Prédiction régression (Le modèle prédit maintenant le log_return)
+        log_return_pred = reg_model.predict([feat_data["regressor_vector"]])[0]
+        current_price = feat_data["current_price"]
+        next_price = current_price * np.exp(log_return_pred)
         
         # Prédiction classification
         class_names = ["Baisse", "Stable", "Hausse"]  # Ordre: 0, 1, 2 (comme dans ton training)
@@ -111,7 +113,7 @@ def predict_symbol(symbol: str):
             "timestamp": feat_data["timestamp"],
             "asof": feat_data.get("asof_timestamp"),
             "prediction": {
-                "next_close_price": round(float(reg_pred), 2),
+                "next_close_price": round(float(next_price), 2),
                 "direction": clf_pred_label,
                 "confidence": round(max(clf_proba) * 100, 1) if clf_proba else None
             },

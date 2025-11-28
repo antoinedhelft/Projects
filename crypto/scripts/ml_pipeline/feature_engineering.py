@@ -3,9 +3,11 @@ import numpy as np
 import ta
 
 def build_features(df_raw: pd.DataFrame):
-
+    """
+    Génère des features basées sur des variations (pourcentages) et non des valeurs brutes.
+    Cela rend le modèle 'stationnaire' et capable de généraliser sur différentes périodes de prix.
+    """
     
-    # Permet de prédire le prix de fermetuire de l'heure suivante
     df_raw['open_datetime'] = pd.to_datetime(df_raw['open_datetime'])
     df_raw.set_index('open_datetime', inplace=True)
     df_list = []
@@ -13,46 +15,72 @@ def build_features(df_raw: pd.DataFrame):
     for symbol in df_raw['symbol'].unique():
         df = df_raw[df_raw['symbol'] == symbol].copy()
         
-        # Lag et moyennes mobiles (1H)
-        ### création de 5 colonnes de lag pour le prix et le volume (valeurs des 1, 2, 3, 4, 5 heures précédentes)
+        # --- 1. Transformation en Rendements (Log Returns) ---
+        # Au lieu du prix brut, on utilise la variation en % par rapport à l'heure précédente
+        # On utilise log return pour une meilleure distribution statistique
+        df['log_return'] = np.log(df['close_price'] / df['close_price'].shift(1))
+        
+        # --- 2. Lags de Rendements (et non de prix) ---
+        # Est-ce que ça montait ou descendait il y a 1h, 2h, 3h ?
         for lag in range(1, 6):
-            df[f'price_lag_{lag}h'] = df['close_price'].shift(lag)
-            df[f'volume_lag_{lag}h'] = df['volume_base'].shift(lag)
-        ### création de 2 colonnes de moyennes mobiles (24h et 72h)
-        df['rolling_mean_24h'] = df['close_price'].rolling(window=24).mean()
-        df['rolling_mean_72h'] = df['close_price'].rolling(window=72).mean()
+            df[f'return_lag_{lag}h'] = df['log_return'].shift(lag)
+            # Volume relatif : Volume actuel / Volume moyen des 24 dernières heures
+            # Cela permet de détecter les pics de volume peu importe si on est en 2021 ou 2024
+            df[f'vol_relative_lag_{lag}h'] = (df['volume_base'].shift(lag) / 
+                                            df['volume_base'].rolling(window=24).mean().shift(lag))
 
-        # Indicateurs techniques
-        # Indice de Force Relative : mesure l'ampleur et la rapidité des changemets récents.
-        #  > 70 suracheté, < 30 survendu étendue : 0-100
+        # --- 3. Indicateurs Techniques Normalisés ---
+        
+        # RSI (Déjà entre 0 et 100, c'est parfait)
         df['rsi'] = ta.momentum.RSIIndicator(df['close_price']).rsi()
-        # Convergence et divergence des moyennes mobiles : Indique la direction et la force de tendance entre 2 moyennes mobiles.
-        df['macd_diff'] = ta.trend.MACD(df['close_price']).macd_diff()
-        # Average True Range : indique l'ampleur moyenne des mouvements sur une période donnée et donc la volatilité.
-        # Un ATR élevé indique une forte volatilité, un ATR faible indique une faible volatilité.
-        df['atr'] = ta.volatility.AverageTrueRange(df['high_price'], df['low_price'], df['close_price']).average_true_range()
         
-        # Bandes de Bollinger (Volatilité + Tendance)
+        # MACD Diff (On le normalise par le prix pour avoir un % relatif)
+        macd = ta.trend.MACD(df['close_price'])
+        df['macd_diff_normalized'] = macd.macd_diff() / df['close_price']
+        
+        # ATR (Volatilité) normalisé par le prix (ATR %)
+        atr = ta.volatility.AverageTrueRange(df['high_price'], df['low_price'], df['close_price'])
+        df['atr_pct'] = atr.average_true_range() / df['close_price']
+        
+        # Bandes de Bollinger (On garde uniquement le %B qui est normalisé)
         bb_indicator = ta.volatility.BollingerBands(close=df["close_price"], window=20, window_dev=2)
-        df['bb_bbm'] = bb_indicator.bollinger_mavg()
-        df['bb_bbh'] = bb_indicator.bollinger_hband()
-        df['bb_bbl'] = bb_indicator.bollinger_lband()
-        # Position relative dans les bandes (0 = bande basse, 1 = bande haute)
-        df['bb_pband'] = bb_indicator.bollinger_pband()
+        df['bb_pband'] = bb_indicator.bollinger_pband() # Position dans les bandes (0=bas, 1=haut)
+        df['bb_width'] = bb_indicator.bollinger_wband() # Largeur des bandes en %
         
-        # Caractéristiques temporelles
-        df['hour_of_day'] = df.index.hour
+        # Distance SMA (Prix par rapport à la moyenne mobile 24h en %)
+        df['dist_sma_24h'] = (df['close_price'] - df['close_price'].rolling(window=24).mean()) / df['close_price']
+
+        # Caractéristiques temporelles (Cycliques)
+        # Transformer l'heure en cos/sin pour garder la continuité (23h est proche de 00h)
+        df['hour_sin'] = np.sin(2 * np.pi * df.index.hour / 24)
+        df['hour_cos'] = np.cos(2 * np.pi * df.index.hour / 24)
         df['day_of_week'] = df.index.dayofweek
         
-        # Cible de régression: le prix de fermeture suivant
-        ### création une colonne target_price qui est le prix de clôture de l'heure suivante
+        # --- 4. Cibles (Targets) ---
+        
+        # Target Régression : Le prix futur (On le garde pour l'affichage, mais le modèle apprendra mieux sur les returns)
         df['target_price'] = df['close_price'].shift(-1)
+        
+        # Target Classification (inchangé pour l'instant, géré dans classification.py)
+        # Mais on pourrait prédire le signe du log_return futur
         
         df_list.append(df)
 
     df_features = pd.concat(df_list)
 
-    # Nettoyage des valeurs infinies et manquantes
+    # --- 5. Nettoyage ---
+    # On supprime les colonnes de prix bruts qui "trompent" le modèle
+    # On garde 'close_price' uniquement car classification.py en a besoin pour calculer la target 'class'
+    # Mais il faudra l'exclure des features d'entraînement dans le script de modèle
+    cols_to_drop = ['open_price', 'high_price', 'low_price', 'volume_base', 'volume_quote', 
+                    'close_time', 'quote_asset_volume', 'number_of_trades', 
+                    'taker_buy_base_asset_volume', 'taker_buy_quote_asset_volume']
+    
+    # On ne garde que les colonnes existantes
+    cols_to_drop = [c for c in cols_to_drop if c in df_features.columns]
+    df_features.drop(columns=cols_to_drop, inplace=True)
+
+    # Nettoyage des valeurs infinies et manquantes (générées par les lags et rolling)
     df_features.replace([np.inf, -np.inf], np.nan, inplace=True)
     df_features.dropna(inplace=True)
 

@@ -1,5 +1,7 @@
 import os
 import math
+import numpy as np
+import ta
 from datetime import datetime, timezone, timedelta
 import pandas as pd
 from sqlalchemy import create_engine, text
@@ -56,45 +58,43 @@ def fetch_history(symbol: str, hours: int = 80) -> pd.DataFrame:
     return df
 
 def compute_indicators(df: pd.DataFrame) -> pd.DataFrame:
-    price = df["close_price"] if "close_price" in df.columns else df["open_price"]
-    df["price"] = price
+    # --- 1. Transformation en Rendements (Log Returns) ---
+    # Au lieu du prix brut, on utilise la variation en % par rapport à l'heure précédente
+    df['log_return'] = np.log(df['close_price'] / df['close_price'].shift(1))
+    
+    # --- 2. Lags de Rendements (et non de prix) ---
+    for lag in range(1, 6):
+        df[f'return_lag_{lag}h'] = df['log_return'].shift(lag)
+        # Volume relatif : Volume actuel / Volume moyen des 24 dernières heures
+        df[f'vol_relative_lag_{lag}h'] = (df['volume_base'].shift(lag) / 
+                                        df['volume_base'].rolling(window=24).mean().shift(lag))
 
-    # Lags (1..5)
-    for k in range(1, 6):
-        df[f"price_lag_{k}h"] = df["price"].shift(k)
-        df[f"volume_lag_{k}h"] = df["volume_base"].shift(k)
+    # --- 3. Indicateurs Techniques Normalisés ---
+    
+    # RSI
+    df['rsi'] = ta.momentum.RSIIndicator(df['close_price']).rsi()
+    
+    # MACD Diff Normalisé
+    macd = ta.trend.MACD(df['close_price'])
+    df['macd_diff_normalized'] = macd.macd_diff() / df['close_price']
+    
+    # ATR Normalisé
+    atr = ta.volatility.AverageTrueRange(df['high_price'], df['low_price'], df['close_price'])
+    df['atr_pct'] = atr.average_true_range() / df['close_price']
+    
+    # Bandes de Bollinger
+    bb_indicator = ta.volatility.BollingerBands(close=df["close_price"], window=20, window_dev=2)
+    df['bb_pband'] = bb_indicator.bollinger_pband()
+    df['bb_width'] = bb_indicator.bollinger_wband()
+    
+    # Distance SMA
+    df['dist_sma_24h'] = (df['close_price'] - df['close_price'].rolling(window=24).mean()) / df['close_price']
 
-    # Rolling means
-    df["rolling_mean_24h"] = df["price"].rolling(24, min_periods=12).mean()
-    df["rolling_mean_72h"] = df["price"].rolling(72, min_periods=36).mean()
-
-    # RSI (14)
-    delta = df["price"].diff()
-    gain = (delta.clip(lower=0)).rolling(14, min_periods=7).mean()
-    loss = (-delta.clip(upper=0)).rolling(14, min_periods=7).mean()
-    rs = gain / loss.replace(0, math.nan)
-    df["rsi"] = 100 - (100 / (1 + rs))
-
-    # MACD diff (12,26,9)
-    ema12 = df["price"].ewm(span=12, adjust=False).mean()
-    ema26 = df["price"].ewm(span=26, adjust=False).mean()
-    macd = ema12 - ema26
-    signal = macd.ewm(span=9, adjust=False).mean()
-    df["macd_diff"] = macd - signal
-
-    # ATR (14)
-    prev_close = df["price"].shift(1)
-    tr = pd.concat([
-        (df["high_price"] - df["low_price"]),
-        (df["high_price"] - prev_close).abs(),
-        (df["low_price"] - prev_close).abs()
-    ], axis=1).max(axis=1)
-    df["atr"] = tr.rolling(14, min_periods=7).mean()
-
-    # Time features
+    # Caractéristiques temporelles
     ts = pd.to_datetime(df["timestamp"])
-    df["hour_of_day"] = ts.dt.hour
-    df["day_of_week"] = ts.dt.dayofweek
+    df['hour_sin'] = np.sin(2 * np.pi * ts.dt.hour / 24)
+    df['hour_cos'] = np.cos(2 * np.pi * ts.dt.hour / 24)
+    df['day_of_week'] = ts.dt.dayofweek
 
     return df
 
@@ -130,6 +130,7 @@ def latest_feature_row(symbol: str):
         "regressor_features": reg_feats,
         "classifier_vector": clf_vector,
         "regressor_vector": reg_vector,
+        "current_price": float(last["close_price"]),
         # Horodatage de la dernière bougie observée
         "asof_timestamp": last_ts.isoformat(),
         # Horodatage de la bougie prédite (t+1h)

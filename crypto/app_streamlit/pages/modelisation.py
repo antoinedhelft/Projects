@@ -392,23 +392,21 @@ def render():
         except Exception as e:
             st.error(f"Prédiction indisponible: {e}")
 
-        col_save = st.sidebar
-
-        with col_save:
-            st.markdown("### Persistance")
-            st.markdown("💾 **Hugging Face Hub** 🤗")
-            st.caption("Stockage des modèles dans le cloud (gratuit).")
-            # Afficher les derniers modèles enregistrés dans le volume models_data
-            try:
-                joblibs = sorted(ALGO_DIR.glob("*.joblib"), key=lambda p: p.stat().st_mtime, reverse=True)[:4]
-                if joblibs:
-                    for p in joblibs:
-                        ts = datetime.fromtimestamp(p.stat().st_mtime)
-                        st.write(f"• {p.name} (modifié: {ts:%Y-%m-%d %H:%M:%S})")
-                else:
-                    st.info("Aucun modèle .joblib trouvé dans le volume.")
-            except Exception as e:
-                st.warning(f"Impossible de lister les modèles: {e}")
+        st.write("---")   
+        st.markdown("### Persistance")
+        st.markdown("💾 **Hugging Face Hub** 🤗")
+        st.caption("Stockage des modèles dans le cloud (gratuit).")
+        # Afficher les derniers modèles enregistrés dans le volume models_data
+        try:
+            joblibs = sorted(ALGO_DIR.glob("*.joblib"), key=lambda p: p.stat().st_mtime, reverse=True)[:4]
+            if joblibs:
+                for p in joblibs:
+                    ts = datetime.fromtimestamp(p.stat().st_mtime)
+                    st.write(f"• {p.name} (modifié: {ts:%Y-%m-%d %H:%M:%S})")
+            else:
+                st.info("Aucun modèle .joblib trouvé dans le volume.")
+        except Exception as e:
+            st.warning(f"Impossible de lister les modèles: {e}")
 
 
     with tabs[1]:
