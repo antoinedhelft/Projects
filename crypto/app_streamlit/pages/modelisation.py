@@ -450,9 +450,9 @@ def render():
 
                 # Aperçu tabulaire (dernières lignes)
                 if not dff.empty:
-                    st.dataframe(dff.dropna().tail(100)[[
-                        "timestamp", "close_price", "price_lag_1h", "rolling_mean_24h", "rsi", "macd_diff", "atr", "hour_of_day", "day_of_week", "target_price"
-                    ]])
+                    # Colonnes disponibles après la mise à jour "stationnaire"
+                    cols_to_show = [c for c in ["timestamp", "close_price", "log_return", "return_lag_1h", "rsi", "macd_diff_normalized", "atr_pct", "hour_sin", "day_of_week", "target_price"] if c in dff.columns]
+                    st.dataframe(dff.dropna().tail(100)[cols_to_show])
                 else:
                     st.info("Pas assez d'historique pour calculer les features sur la fenêtre.")
 
@@ -463,11 +463,12 @@ def render():
                     if not dff.empty:
                         fig_ac = go.Figure()
                         for k in range(1, 6):
-                            col = f"price_lag_{k}h"
+                            col = f"return_lag_{k}h" # Mise à jour: on regarde les lags de rendements
                             if col in dff.columns:
-                                corr_series = dff["close_price"].rolling(lag_win, min_periods=max(6, lag_win//6)).corr(dff[col])
+                                # Corrélation entre le log_return actuel et ses lags
+                                corr_series = dff["log_return"].rolling(lag_win, min_periods=max(6, lag_win//6)).corr(dff[col])
                                 fig_ac.add_trace(go.Scatter(x=dff["timestamp"], y=corr_series, name=f"lag {k}h", mode="lines"))
-                        fig_ac.update_layout(height=320, title=f"{sym} – Corrélation roulante close vs lags (fenêtre={lag_win}h)", yaxis=dict(range=[-1,1]))
+                        fig_ac.update_layout(height=320, title=f"{sym} – Corrélation roulante log_return vs lags (fenêtre={lag_win}h)", yaxis=dict(range=[-1,1]))
                         st.plotly_chart(fig_ac, use_container_width=True)
                     else:
                         st.info("Données insuffisantes pour l'autocorrélation.")
@@ -479,11 +480,11 @@ def render():
                 try:
                     if not dff.empty:
                         dfv = dff.copy()
-                        # Assurer la présence des features de temps
-                        if "hour_of_day" not in dfv.columns or "day_of_week" not in dfv.columns:
-                            ts = pd.to_datetime(dfv["timestamp"])  # sauvegarde
-                            dfv["hour_of_day"] = ts.dt.hour
-                            dfv["day_of_week"] = ts.dt.dayofweek
+                        # Assurer la présence des features de temps (calculées via sin/cos maintenant, mais on peut recalculer hour/day pour l'affichage)
+                        ts = pd.to_datetime(dfv["timestamp"])
+                        dfv["hour_of_day"] = ts.dt.hour
+                        dfv["day_of_week"] = ts.dt.dayofweek
+                        
                         if dim == "Heure":
                             agg = dfv.groupby("hour_of_day", as_index=False)["volume_base"].sum()
                             x = agg["hour_of_day"].astype(int)
@@ -506,10 +507,12 @@ def render():
                     if not dff.empty:
                         fig_ma = go.Figure()
                         fig_ma.add_trace(go.Scatter(x=dff["timestamp"], y=dff["close_price"], name="Close", mode="lines", line=dict(color="#999")))
-                        if "rolling_mean_24h" in dff.columns:
-                            fig_ma.add_trace(go.Scatter(x=dff["timestamp"], y=dff["rolling_mean_24h"], name="MM 24h", mode="lines", line=dict(color="#2ca02c")))
-                        if "rolling_mean_72h" in dff.columns:
-                            fig_ma.add_trace(go.Scatter(x=dff["timestamp"], y=dff["rolling_mean_72h"], name="MM 72h", mode="lines", line=dict(color="#d62728")))
+                        # On recalcule les MM pour l'affichage car elles ne sont plus dans les features (on a dist_sma_24h à la place)
+                        mm24 = dff["close_price"].rolling(24).mean()
+                        mm72 = dff["close_price"].rolling(72).mean()
+                        
+                        fig_ma.add_trace(go.Scatter(x=dff["timestamp"], y=mm24, name="MM 24h", mode="lines", line=dict(color="#2ca02c")))
+                        fig_ma.add_trace(go.Scatter(x=dff["timestamp"], y=mm72, name="MM 72h", mode="lines", line=dict(color="#d62728")))
                         fig_ma.update_layout(height=360, title=f"{sym} – Close vs Moyennes Mobiles ({months_prep} mois)")
                         st.plotly_chart(fig_ma, use_container_width=True)
                     else:
@@ -578,7 +581,12 @@ def render():
                 # Prédictions régression
                 Xr = dff[bundle["reg_feats"]]
                 yr_true = dff["target_price"].to_numpy()
-                yr_pred = bundle["reg_model"].predict(Xr)
+                
+                # Le modèle prédit le log_return, on doit le convertir en prix
+                log_return_pred = bundle["reg_model"].predict(Xr)
+                # Prix(t+1) = Prix(t) * exp(log_return)
+                yr_pred = dff["close_price"].to_numpy() * np.exp(log_return_pred)
+                
                 y_base = dff["close_price"].to_numpy()
                 # Overlay séries
                 fig1 = go.Figure()
