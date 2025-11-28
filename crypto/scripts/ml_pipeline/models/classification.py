@@ -1,4 +1,5 @@
 from sklearn.ensemble import RandomForestClassifier
+from lightgbm import LGBMClassifier
 from sklearn.metrics import classification_report
 import joblib
 import json
@@ -9,8 +10,8 @@ import shutil
 
 
 def train_classifier(df_features, features_path, model_path, train_mask=None):
-    """Entrainement de la classification avec Random Forest.
-    Plus robuste que la régression logistique, mais reste léger avec des hyperparamètres contrôlés.
+    """Entrainement de la classification avec LightGBM (Gradient Boosting).
+    Plus performant que Random Forest sur les séries temporelles et gère mieux le bruit.
     """
 
     # Caractéristiques (exclusion des colonnes de data leakage)
@@ -20,11 +21,12 @@ def train_classifier(df_features, features_path, model_path, train_mask=None):
     # Créer un objectif à 3 classes à partir de la clôture future par rapport à la clôture actuelle (utilise target_price uniquement pour l'étiquette)
     price_change = ((df_features['target_price'] - df_features['close_price']) / df_features['close_price']) * 100
     
-    # --- MODIFICATION: Seuil réduit à 0.25% (au lieu de 0.5%) ---
-    # Pour capter plus de mouvements et rendre la stratégie plus active
+    # --- MODIFICATION: Horizon 4h -> Seuil ajusté à 0.6% ---
+    # Avec un horizon plus long (4h), la volatilité est plus grande.
+    # On augmente le seuil pour ne capturer que les vrais mouvements et éviter le bruit.
     y = pd.cut(
         price_change,
-        bins=[-float('inf'), -0.25, 0.25, float('inf')],
+        bins=[-float('inf'), -0.6, 0.6, float('inf')],
         labels=[0, 1, 2],
     ).astype(int)  # 0=Baisse, 1=Stable, 2=Hausse
 
@@ -48,17 +50,17 @@ def train_classifier(df_features, features_path, model_path, train_mask=None):
         X_train, y_train = X.iloc[:split_point], y.iloc[:split_point]
         X_test, y_test = X.iloc[split_point:], y.iloc[split_point:]
 
-    # Modèle Random Forest
-    print("Training Random Forest Classifier...")
-    # n_estimators=100 et max_depth=15 pour garder le modèle léger (< 50 Mo) tout en capturant la non-linéarité
-    model = RandomForestClassifier(
-        n_estimators=100, 
-        max_depth=15, 
-        min_samples_split=10,
-        min_samples_leaf=5,
-        random_state=42, 
+    # Modèle LightGBM
+    print("Training LightGBM Classifier...")
+    model = LGBMClassifier(
+        n_estimators=500,
+        learning_rate=0.05,
+        max_depth=7,
+        num_leaves=31,
+        random_state=42,
         class_weight='balanced',
-        n_jobs=-1
+        n_jobs=-1,
+        verbose=-1
     )
     model.fit(X_train, y_train)
 

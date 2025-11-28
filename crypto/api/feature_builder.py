@@ -134,6 +134,6 @@ def latest_feature_row(symbol: str):
         "current_price": float(last["close_price"]),
         # Horodatage de la dernière bougie observée
         "asof_timestamp": last_ts.isoformat(),
-        # Horodatage de la bougie prédite (t+1h)
-        "timestamp": next_ts.isoformat(),
+        # Horodatage de la bougie prédite (t+4h)
+        "timestamp": (last_ts + timedelta(hours=4)).isoformat(),
     }

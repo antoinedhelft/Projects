@@ -60,8 +60,8 @@ def build_features(df_raw: pd.DataFrame):
         
         # --- 4. Cibles (Targets) ---
         
-        # Target Régression : Le prix futur (On le garde pour l'affichage, mais le modèle apprendra mieux sur les returns)
-        df['target_price'] = df['close_price'].shift(-1)
+        # Target Régression : Le prix futur à t+4h (Horizon plus stable)
+        df['target_price'] = df['close_price'].shift(-4)
         
         # Target Classification (inchangé pour l'instant, géré dans classification.py)
         # Mais on pourrait prédire le signe du log_return futur

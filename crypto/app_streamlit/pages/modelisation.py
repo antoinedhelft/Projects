@@ -156,7 +156,8 @@ def compute_features(df: pd.DataFrame) -> pd.DataFrame:
     df['hour_cos'] = np.cos(2 * np.pi * ts.dt.hour / 24)
     df['day_of_week'] = ts.dt.dayofweek
     
-    df["target_price"] = df["close_price"].shift(-1)
+    # Target à t+4h
+    df["target_price"] = df["close_price"].shift(-4)
     return df
 
 def list_latest_artifacts():
@@ -323,14 +324,14 @@ def render():
 
             with col_reg:
                 st.subheader("Régression (Estimation du Prix)")
-                st.markdown("📈 Estimer le prix de clôture à $t+1h$ (prochaine bougie).")
+                st.markdown("📈 Estimer le prix de clôture à $t+4h$ (horizon moyen terme).")
                 if api_result is not None:
                     try:
                         y_next_pred = float(api_result["prediction"]["next_close_price"])  # via API
                         abs_delta = y_next_pred - last_close
                         pct_delta = (abs_delta / last_close * 100.0) if last_close else 0.0
                         delta_str = f"{abs_delta:+.2f} ({pct_delta:+.2f}%) vs close(t)"
-                        st.metric("Prix prédit (t+1h)", f"{y_next_pred:,.2f}", delta=delta_str, delta_color="normal")
+                        st.metric("Prix prédit (t+4h)", f"{y_next_pred:,.2f}", delta=delta_str, delta_color="normal")
                     except Exception as e:
                         st.warning(f"Réponse API inattendue, bascule en local: {e}")
                         api_result = None  # force fallback
@@ -348,18 +349,18 @@ def render():
                         abs_delta = y_next_pred - last_close
                         pct_delta = (abs_delta / last_close * 100.0) if last_close else 0.0
                         delta_str = f"{abs_delta:+.2f} ({pct_delta:+.2f}%) vs close(t)"
-                        st.metric("Prix prédit (t+1h)", f"{y_next_pred:,.2f}", delta=delta_str, delta_color="normal")
+                        st.metric("Prix prédit (t+4h)", f"{y_next_pred:,.2f}", delta=delta_str, delta_color="normal")
 
             with col_class:
                 st.subheader("Classification (Direction)")
-                st.markdown("⬆️↔️⬇️ Catégoriser la direction (Baisse / Stable / Hausse) pour $t+1h$.")
+                st.markdown("⬆️↔️⬇️ Catégoriser la direction (Baisse / Stable / Hausse) pour $t+4h$.")
                 # Mapping souhaité 0=Baisse, 1=Stable, 2=Hausse
                 code_to_label = {0: "Baisse", 1: "Stable", 2: "Hausse"}
 
                 if api_result is not None:
                     try:
                         pred_label = str(api_result["prediction"]["direction"])  # via API
-                        st.metric("Classe prédite (t+1h)", pred_label)
+                        st.metric("Classe prédite (t+4h)", pred_label)
                         # Probabilités si disponibles
                         probs = api_result.get("details", {}).get("probabilities")
                         if isinstance(probs, dict):
@@ -386,7 +387,7 @@ def render():
                         except Exception:
                             pred_idx = int(raw_pred)
                         pred_label = code_to_label.get(pred_idx, str(pred_idx))
-                        st.metric("Classe prédite (t+1h)", pred_label)
+                        st.metric("Classe prédite (t+4h)", pred_label)
 
                         if hasattr(clf_model, "predict_proba"):
                             proba = clf_model.predict_proba(Xc)[0]
@@ -563,7 +564,7 @@ def render():
         st.header("4.4 Évaluation & comparaison à une baseline")
         md_justify(
             """
-            Méthode : comparaison au naïf « persistance » (prix(t + 1h) ≈ close(t)).
+            Méthode : comparaison au naïf « persistance » (prix(t + 4h) ≈ close(t)).
             """
         )
         symbols = list_symbols()
@@ -590,16 +591,16 @@ def render():
                 
                 # Le modèle prédit le log_return, on doit le convertir en prix
                 log_return_pred = bundle["reg_model"].predict(Xr)
-                # Prix(t+1) = Prix(t) * exp(log_return)
+                # Prix(t+4) = Prix(t) * exp(log_return)
                 yr_pred = dff["close_price"].to_numpy() * np.exp(log_return_pred)
                 
                 y_base = dff["close_price"].to_numpy()
                 # Overlay séries
                 fig1 = go.Figure()
-                fig1.add_trace(go.Scatter(x=dff["timestamp"], y=yr_true, name="Prix (t+1)", mode="lines"))
+                fig1.add_trace(go.Scatter(x=dff["timestamp"], y=yr_true, name="Prix (t+4)", mode="lines"))
                 fig1.add_trace(go.Scatter(x=dff["timestamp"], y=yr_pred, name="Prédit", mode="lines"))
                 fig1.add_trace(go.Scatter(x=dff["timestamp"], y=y_base, name="Baseline (persistance)", mode="lines", line=dict(dash="dot")))
-                fig1.update_layout(height=380, title=f"{sym} – Réel (t+1) vs Prédit vs Baseline")
+                fig1.update_layout(height=380, title=f"{sym} – Réel (t+4) vs Prédit vs Baseline")
                 st.plotly_chart(fig1, use_container_width=True)
                 # MAE globaux
                 mae = float(np.mean(np.abs(yr_true - yr_pred)))
