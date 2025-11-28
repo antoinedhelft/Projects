@@ -1,5 +1,4 @@
-import lightgbm as lgb
-from sklearn.model_selection import TimeSeriesSplit, RandomizedSearchCV
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report
 import joblib
 import json
@@ -10,8 +9,7 @@ import shutil
 
 
 def train_classifier(df_features, features_path, model_path, train_mask=None):
-    """Entrainement de la classification LightGBM sans fuite : réglage sur train uniquement, 
-    évaluation sur le test en attente, puis réajustement sur toutes les données pour le modèle enregistré.
+    """Entrainement de la classification Logistique (plus léger que LightGBM).
     """
 
     # Caractéristiques (exclusion des colonnes de data leakage)
@@ -46,34 +44,14 @@ def train_classifier(df_features, features_path, model_path, train_mask=None):
         X_train, y_train = X.iloc[:split_point], y.iloc[:split_point]
         X_test, y_test = X.iloc[split_point:], y.iloc[split_point:]
 
-    # recherche des hyperparamètres avec RandomizedSearchCV
-    param_dist_clf = {
-        'n_estimators': [200, 300],
-        'learning_rate': [0.05, 0.1],
-        'num_leaves': [31, 63],
-        'max_depth': [10, 20],
-        'class_weight': ['balanced'],
-    }
-
-    lgbm_clf = lgb.LGBMClassifier(random_state=42, n_jobs=1, verbose=-1)
-    tscv = TimeSeriesSplit(n_splits=3)
-    random_search_clf = RandomizedSearchCV(
-        lgbm_clf,
-        param_dist_clf,
-        n_iter=10,
-        scoring='f1_macro',
-        cv=tscv,
-        verbose=0,
-        n_jobs=-1,
-        random_state=42,
-    )
-    random_search_clf.fit(X_train, y_train)
-
-    print(f"Meilleurs paramètres de classification: {random_search_clf.best_params_}")
-    best_clf_model = random_search_clf.best_estimator_  # refit on TRAIN
+    # Modèle Logistique
+    print("Training Logistic Regression...")
+    # max_iter augmenté pour assurer la convergence
+    model = LogisticRegression(multi_class='multinomial', max_iter=1000, random_state=42, class_weight='balanced')
+    model.fit(X_train, y_train)
 
     # Evaluation sur le test
-    y_pred = best_clf_model.predict(X_test)
+    y_pred = model.predict(X_test)
     report = classification_report(
         y_test,
         y_pred,
@@ -83,10 +61,9 @@ def train_classifier(df_features, features_path, model_path, train_mask=None):
     print("Rapport de classification final:")
     print(classification_report(y_test, y_pred, target_names=['Baisse', 'Stable', 'Hausse']))
 
-    # Optionnel: refit sur toutes les données pour la sauvegarde
-    final_model = lgb.LGBMClassifier(**best_clf_model.get_params())
-    final_model.fit(X, y)
-    joblib.dump(final_model, str(model_path))
+    # Refit sur toutes les données pour la sauvegarde
+    model.fit(X, y)
+    joblib.dump(model, str(model_path))
 
     # Retourne aussi des infos utiles pour le backtest (OOS)
     return {
