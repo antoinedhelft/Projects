@@ -244,7 +244,7 @@ def plot_feature_importances(names, importances, title="Importances des features
     fig.update_layout(height=600, title=title, yaxis=dict(autorange="reversed"))
     return fig
 
-@st.cache_resource
+@st.cache_resource(ttl=3600) # Cache d'une heure pour éviter de recharger à chaque interaction
 def get_models_and_features():
     """Charge les modèles et listes de features les plus récents (avec cache)."""
     reg_model_path, clf_model_path, reg_feat_path, clf_feat_path = list_latest_artifacts()
@@ -411,6 +411,11 @@ def render():
         st.markdown("### Persistance")
         st.markdown("💾 **Hugging Face Hub** 🤗")
         st.caption("Stockage des modèles dans le cloud (gratuit).")
+        
+        if st.button("🔄 Recharger les modèles (Clear Cache)"):
+            st.cache_resource.clear()
+            st.rerun()
+
         # Afficher les derniers modèles enregistrés dans le volume models_data
         try:
             joblibs = sorted(ALGO_DIR.glob("*.joblib"), key=lambda p: p.stat().st_mtime, reverse=True)[:4]
