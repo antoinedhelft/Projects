@@ -10,6 +10,8 @@ from sqlalchemy import create_engine, text
 import requests
 import streamlit as st
 import joblib
+import subprocess
+import sys
 from huggingface_hub import hf_hub_download
 
 # st.set_page_config(page_title="4 - Modélisation & Machine Learning", layout="wide")
@@ -256,6 +258,21 @@ def get_models_and_features():
 def render():
     st.title("4️⃣ Modélisation et Machine Learning")
 
+    # Bouton de mise à jour des données (Manuel)
+    if st.button("🔄 Mettre à jour les données (Binance)"):
+        with st.spinner("Récupération des dernières données..."):
+            try:
+                # Chemin vers le script d'update
+                script_path = Path(__file__).resolve().parents[2] / "scripts" / "data_pipeline" / "incremental_update.py"
+                result = subprocess.run([sys.executable, str(script_path)], capture_output=True, text=True)
+                if result.returncode == 0:
+                    st.success("Données mises à jour avec succès !")
+                    st.cache_data.clear() # Invalider le cache
+                else:
+                    st.error(f"Erreur lors de la mise à jour : {result.stderr}")
+            except Exception as e:
+                st.error(f"Impossible de lancer le script : {e}")
+
     tabs = st.tabs([
         "4.1 Problème & choix d’algorithmes",
         "4.2 Pré-traitements & justification",
@@ -308,7 +325,7 @@ def render():
                     if bundle is None:
                         bundle = get_models_and_features()
                     if not bundle:
-                        st.warning("Artefacts (modèles ou listes de features) indisponibles pour la prédiction locale.")
+                        st.warning("⚠️ Modèles introuvables. Veuillez configurer HF_TOKEN/HF_REPO_ID dans les Secrets et uploader les modèles (.joblib) sur Hugging Face, ou les placer dans `crypto/algo_crypto`.")
                     else:
                         Xr = last_row[bundle["reg_feats"]]
                         y_next_pred = float(bundle["reg_model"].predict(Xr)[0])
@@ -343,7 +360,7 @@ def render():
                     if bundle is None:
                         bundle = get_models_and_features()
                     if not bundle:
-                        st.warning("Artefacts manquants pour la prédiction locale.")
+                        st.warning("⚠️ Modèles introuvables. Vérifiez la configuration Hugging Face ou les fichiers locaux.")
                     else:
                         Xc = last_row[bundle["clf_feats"]]
                         clf_model = bundle["clf_model"]

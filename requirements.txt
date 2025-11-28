@@ -6,6 +6,7 @@ seaborn==0.13.2
 Unidecode==1.4.0
 
 # Crypto Project Dependencies
+python-binance
 python-dotenv
 huggingface_hub
 SQLAlchemy>=2.0.30
