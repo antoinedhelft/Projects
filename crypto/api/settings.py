@@ -7,7 +7,7 @@ MODELS_DIR = Path(os.getenv("MODELS_DIR", str(BASE_DIR / "algo_crypto")))
 
 ALGO_DIR = Path(
     os.getenv("MODELS_DIR")
-    or ("/app/algo_crypto" if Path("/app").exists() else (Path(__file__).resolve().parents[1] / "algo_crypto"))
+    or ("/tmp/algo_crypto" if Path("/app").exists() else (Path(__file__).resolve().parents[1] / "algo_crypto"))
 )
 
 # Variables d'environnement avec fallback

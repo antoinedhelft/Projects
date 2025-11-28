@@ -35,9 +35,9 @@ DATABASE_URL = os.getenv(
 )
 ALGO_DIR = Path(
     os.getenv("MODELS_DIR")
-    or ("/app/algo_crypto" if Path("/app").exists() else (Path(__file__).resolve().parents[2] / "algo_crypto"))
+    or ("/tmp/algo_crypto" if Path("/app").exists() else (Path(__file__).resolve().parents[2] / "algo_crypto"))
 )
-ALGO_DIR.mkdir(exist_ok=True) # S'assurer que le dossier existe pour le téléchargement HF
+ALGO_DIR.mkdir(parents=True, exist_ok=True) # S'assurer que le dossier existe pour le téléchargement HF
 
 HF_REPO_ID = os.getenv("HF_REPO_ID")
 HF_TOKEN = os.getenv("HF_TOKEN")

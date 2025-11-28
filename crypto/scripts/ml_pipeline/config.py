@@ -5,7 +5,7 @@ import os
 # Détection d'environnement avec Path (plus propre)
 if os.getenv('DOCKER_ENV') or Path('/app').exists():
     # Dans Docker
-    ALGO_DIR = Path("/app/algo_crypto")
+    ALGO_DIR = Path("/tmp/algo_crypto")
 else:
     # En local - remonter à la racine du projet
     PROJECT_ROOT = Path(__file__).resolve().parents[2]  # scripts/ml_pipeline -> scripts -> racine
