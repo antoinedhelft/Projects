@@ -15,7 +15,25 @@ INTERVAL = Client.KLINE_INTERVAL_1HOUR
 # Base assets considérés comme stables (à exclure côté baseAsset pour garder des paires type BTCUSDT, ETHUSDT, ...)
 STABLES = {"USDT","USDC","BUSD","DAI","TUSD","PAX","USDP","FDUSD","GUSD","USDE"}
 
-client = Client()
+# Configuration du client Binance pour utiliser l'API US si nécessaire ou désactiver la vérification
+# GitHub Actions utilise des IPs US qui sont bloquées par Binance.com
+# Solution : Utiliser tld='us' pour utiliser binance.us (si les paires existent) ou gérer l'erreur.
+# Pour ce projet, on va tenter d'utiliser l'API publique sans authentification qui est parfois moins restrictive,
+# ou configurer le client pour binance.us si on est aux US.
+
+import os
+tld = 'com'
+# Détection basique si on est potentiellement bloqué (GitHub Actions est souvent aux US)
+if os.getenv('GITHUB_ACTIONS') == 'true':
+    tld = 'us'
+
+try:
+    client = Client(tld=tld)
+    client.ping()
+except Exception:
+    # Si 'us' échoue ou 'com' échoue, on tente l'autre
+    tld = 'us' if tld == 'com' else 'com'
+    client = Client(tld=tld)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 LOG_DIR = PROJECT_ROOT / "logs"
