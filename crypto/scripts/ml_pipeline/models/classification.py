@@ -19,9 +19,12 @@ def train_classifier(df_features, features_path, model_path, train_mask=None):
 
     # Créer un objectif à 3 classes à partir de la clôture future par rapport à la clôture actuelle (utilise target_price uniquement pour l'étiquette)
     price_change = ((df_features['target_price'] - df_features['close_price']) / df_features['close_price']) * 100
+    
+    # --- MODIFICATION: Seuil réduit à 0.25% (au lieu de 0.5%) ---
+    # Pour capter plus de mouvements et rendre la stratégie plus active
     y = pd.cut(
         price_change,
-        bins=[-float('inf'), -0.5, 0.5, float('inf')],
+        bins=[-float('inf'), -0.25, 0.25, float('inf')],
         labels=[0, 1, 2],
     ).astype(int)  # 0=Baisse, 1=Stable, 2=Hausse
 

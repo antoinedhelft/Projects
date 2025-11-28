@@ -49,6 +49,8 @@ def build_features(df_raw: pd.DataFrame):
         
         # Distance SMA (Prix par rapport à la moyenne mobile 24h en %)
         df['dist_sma_24h'] = (df['close_price'] - df['close_price'].rolling(window=24).mean()) / df['close_price']
+        # Distance SMA Long Terme (1 semaine - 168h) pour la tendance de fond
+        df['dist_sma_168h'] = (df['close_price'] - df['close_price'].rolling(window=168).mean()) / df['close_price']
 
         # Caractéristiques temporelles (Cycliques)
         # Transformer l'heure en cos/sin pour garder la continuité (23h est proche de 00h)

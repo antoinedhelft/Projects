@@ -89,6 +89,7 @@ def compute_indicators(df: pd.DataFrame) -> pd.DataFrame:
     
     # Distance SMA
     df['dist_sma_24h'] = (df['close_price'] - df['close_price'].rolling(window=24).mean()) / df['close_price']
+    df['dist_sma_168h'] = (df['close_price'] - df['close_price'].rolling(window=168).mean()) / df['close_price']
 
     # Caractéristiques temporelles
     ts = pd.to_datetime(df["timestamp"])
