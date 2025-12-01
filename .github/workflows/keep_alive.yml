@@ -1,0 +1,18 @@
+name: Keep Streamlit App Alive
+
+on:
+  schedule:
+    # S'exécute toutes les heures à la minute 0
+    - cron: '0 * * * *'
+  workflow_dispatch: # Permet de le lancer manuellement depuis GitHub si besoin
+
+jobs:
+  ping_app:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Streamlit App
+        run: |
+          # Envoie une requête HEAD (-I) pour vérifier que le site répond
+          # --fail fait échouer l'étape si le code retour est >= 400
+          curl -I --fail https://portfolio-dhelft-antoine.streamlit.app/
+          echo "Ping sent successfully at $(date)"
