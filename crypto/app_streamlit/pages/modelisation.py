@@ -400,7 +400,7 @@ def render():
 
                 if api_result is None:
                     if bundle is None:
-                        bundle = get_models_and_features()
+                        bundle = get_models_and_features(sym_top)
                     if not bundle:
                         st.warning("⚠️ Modèles introuvables. Vérifiez la configuration Hugging Face ou les fichiers locaux.")
                     else:
