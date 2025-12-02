@@ -678,14 +678,45 @@ def render():
                         # probas est un tableau (N, 3) -> [Prob_Baisse, Prob_Stable, Prob_Hausse]
                         
                         signals = []
+                        current_pos = 0 # 0=Hold, 1=Buy, -1=Sell
+                        hold_counter = 0 # Compteur pour la durée minimale de détention
+                        MIN_HOLD_PERIOD = 4 # On garde la position au moins 4h (horizon de prédiction)
+
                         for p in probas:
                             # p[0]=Baisse, p[1]=Stable, p[2]=Hausse
+                            
+                            # Logique de "Cooldown" : Si on vient de prendre position, on la garde un peu
+                            if hold_counter > 0:
+                                hold_counter -= 1
+                                # On garde le signal précédent (implicitement via current_pos)
+                                if current_pos == 1:
+                                    signals.append('Buy')
+                                elif current_pos == -1:
+                                    signals.append('Sell')
+                                else:
+                                    signals.append('Hold')
+                                continue
+
+                            # Logique de décision standard
+                            new_signal = 'Hold'
                             if p[2] >= threshold:
-                                signals.append('Buy')
+                                new_signal = 'Buy'
                             elif p[0] >= threshold:
-                                signals.append('Sell')
+                                new_signal = 'Sell'
+                            
+                            # Mise à jour de la position et du compteur
+                            if new_signal == 'Buy':
+                                if current_pos != 1: # Changement de position
+                                    hold_counter = MIN_HOLD_PERIOD
+                                current_pos = 1
+                            elif new_signal == 'Sell':
+                                if current_pos != -1: # Changement de position
+                                    hold_counter = MIN_HOLD_PERIOD
+                                current_pos = -1
                             else:
-                                signals.append('Hold')
+                                current_pos = 0
+                            
+                            signals.append(new_signal)
                     else:
                         # Fallback si pas de probas (ex: SVM simple)
                         raw_pred = bundle["clf_model"].predict(Xc)
