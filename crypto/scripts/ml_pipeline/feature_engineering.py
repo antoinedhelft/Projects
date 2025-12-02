@@ -48,9 +48,25 @@ def build_features(df_raw: pd.DataFrame):
         df['bb_width'] = bb_indicator.bollinger_wband() # Largeur des bandes en %
         
         # Distance SMA (Prix par rapport à la moyenne mobile 24h en %)
-        df['dist_sma_24h'] = (df['close_price'] - df['close_price'].rolling(window=24).mean()) / df['close_price']
+        sma_24 = df['close_price'].rolling(window=24).mean()
+        sma_72 = df['close_price'].rolling(window=72).mean()
+        
+        df['dist_sma_24h'] = (df['close_price'] - sma_24) / df['close_price']
         # Distance SMA Long Terme (1 semaine - 168h) pour la tendance de fond
         df['dist_sma_168h'] = (df['close_price'] - df['close_price'].rolling(window=168).mean()) / df['close_price']
+
+        # --- NOUVEAU : Croisement de Moyennes Mobiles (Golden Cross / Death Cross) ---
+        # On donne au modèle l'écart entre la MM courte (24h) et la MM longue (72h)
+        # Si > 0 : Tendance haussière (MM courte au-dessus)
+        # Si < 0 : Tendance baissière
+        df['sma_cross_24_72'] = (sma_24 - sma_72) / sma_72
+
+        # --- NOUVEAU : Force de la tendance (ADX) ---
+        # Les moyennes mobiles sont piégeuses en marché plat (ranging).
+        # L'ADX permet au modèle de savoir si la tendance est forte (>25) ou faible (<20).
+        # S'il est faible, le modèle apprendra à ignorer les croisements de MM.
+        adx_indicator = ta.trend.ADXIndicator(df['high_price'], df['low_price'], df['close_price'], window=14)
+        df['adx'] = adx_indicator.adx() / 100.0 # Normalisé entre 0 et 1
 
         # Caractéristiques temporelles (Cycliques)
         # Transformer l'heure en cos/sin pour garder la continuité (23h est proche de 00h)
