@@ -91,65 +91,75 @@ def main():
             
         print("[DEBUG] Feature engineering...")
         sys.stdout.flush()
-        df_features = build_features(df_raw)
-        # Ordonner par symbole puis temps pour construire un split chrono par symbole
-        idx_name = df_features.index.name or 'open_datetime'
-        df_features = (
-            df_features
+        df_features_all = build_features(df_raw)
+        
+        # Ordonner par symbole puis temps
+        idx_name = df_features_all.index.name or 'open_datetime'
+        df_features_all = (
+            df_features_all
             .reset_index()
-            .rename(columns={df_features.index.name: 'open_datetime'})
+            .rename(columns={df_features_all.index.name: 'open_datetime'})
             .sort_values(['symbol', 'open_datetime'])
             .set_index('open_datetime')
         )
-        print(f"[DEBUG] Features construites: {df_features.shape}")
-        print(f"[DEBUG] Colonnes: {list(df_features.columns)}")
+        
+        print(f"[DEBUG] Features construites (Total): {df_features_all.shape}")
         sys.stdout.flush()
-        
-        # --- MODIFICATION: Split Temporel Strict (Train < 2024, Test >= 2024) ---
-        # On coupe à une date fixe pour simuler un vrai déploiement fin 2023
-        # et tester sur 2024 (Out-Of-Sample)
-        cutoff_date = pd.Timestamp("2024-01-01")
-        
-        # Gestion timezone (si l'index est tz-aware, on adapte le cutoff)
-        if df_features.index.tz is not None:
-            cutoff_date = cutoff_date.tz_localize(df_features.index.tz)
-            
-        train_mask = df_features.index < cutoff_date
-        
-        print(f"[DEBUG] Split Temporel: Cutoff={cutoff_date}")
-        print(f"[DEBUG] Train size: {train_mask.sum()} | Test size: {(~train_mask).sum()}")
-        
-        if train_mask.sum() == 0 or (~train_mask).sum() == 0:
-            print("[WARN] Le split temporel a donné un set vide. Vérifiez les dates.")
-            # Fallback sur 80/20 si problème de date
-            print("[WARN] Fallback sur split 80/20 séquentiel.")
-            df_tmp = df_features.copy()
-            df_tmp['row_idx'] = df_tmp.groupby('symbol').cumcount()
-            df_tmp['grp_size'] = df_tmp.groupby('symbol')['symbol'].transform('size')
-            df_tmp['train_cut'] = (df_tmp['grp_size'] * 0.8).astype(int)
-            train_mask = df_tmp['row_idx'] < df_tmp['train_cut']
 
-    # Aucun clipping de la cible. On conserve toute l'amplitude des prix
-    # pour éviter de plafonner artificiellement des actifs comme BTCUSDT.
+        # --- MODIFICATION: Entraînement par Symbole ---
+        symbols = df_features_all['symbol'].unique()
+        print(f"[DEBUG] Symboles trouvés: {symbols}")
         
-        print("[DEBUG] Entraînement régresseur...")
-        sys.stdout.flush()
-        reg_result = train_regressor(df_features, FEATURES_REG_JSON, MODEL_REG_PATH, train_mask=train_mask)
+        files_to_upload = []
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M")
         
-        print("[DEBUG] Entraînement classificateur...")
-        sys.stdout.flush()
-        clf_result = train_classifier(df_features, FEATURES_CLF_JSON, MODEL_CLF_PATH, train_mask=train_mask)
-        
-        print("[DEBUG] Training terminé avec succès!")
+        # Import ALGO_DIR depuis config pour savoir où sauvegarder
+        from scripts.ml_pipeline.config import ALGO_DIR
+
+        for sym in symbols:
+            print(f"\n--- Traitement Symbole: {sym} ---")
+            df_sym = df_features_all[df_features_all['symbol'] == sym].copy()
+            
+            # Définition des chemins spécifiques au symbole
+            model_reg_path = ALGO_DIR / f"crypto_regressor_lgbm_{sym}_{timestamp}.joblib"
+            model_clf_path = ALGO_DIR / f"crypto_classifier_lgbm_{sym}_{timestamp}.joblib"
+            # Les features JSON peuvent rester communes si elles sont identiques, 
+            # mais pour être propre on peut aussi les suffixer ou garder un fichier global.
+            # Ici on va générer un fichier features par symbole au cas où on ferait de la sélection de features spécifique plus tard.
+            features_reg_json = ALGO_DIR / f"regressor_features_{sym}_{timestamp}.json"
+            features_clf_json = ALGO_DIR / f"classifier_features_{sym}_{timestamp}.json"
+            
+            # Split Temporel Strict (Train < 2024, Test >= 2024)
+            cutoff_date = pd.Timestamp("2024-01-01")
+            if df_sym.index.tz is not None:
+                cutoff_date = cutoff_date.tz_localize(df_sym.index.tz)
+                
+            train_mask = df_sym.index < cutoff_date
+            
+            print(f"[DEBUG] {sym} - Train size: {train_mask.sum()} | Test size: {(~train_mask).sum()}")
+            
+            if train_mask.sum() < 50: # Trop peu de données pour entraîner
+                print(f"[WARN] Pas assez de données pour {sym}, skip.")
+                continue
+
+            # Entraînement Régresseur
+            print(f"[DEBUG] {sym} - Entraînement régresseur...")
+            train_regressor(df_sym, features_reg_json, model_reg_path, train_mask=train_mask)
+            
+            # Entraînement Classificateur
+            print(f"[DEBUG] {sym} - Entraînement classificateur...")
+            train_classifier(df_sym, features_clf_json, model_clf_path, train_mask=train_mask)
+            
+            # Ajout aux fichiers à uploader
+            files_to_upload.extend([model_reg_path, model_clf_path, features_reg_json, features_clf_json])
+
+        print("\n[DEBUG] Training terminé pour tous les symboles!")
         
         # Upload vers HF
-        upload_to_hf([
-            MODEL_REG_PATH, 
-            MODEL_CLF_PATH, 
-            FEATURES_REG_JSON, 
-            FEATURES_CLF_JSON, 
-            METRICS_JSON
-        ])
+        if files_to_upload:
+            upload_to_hf(files_to_upload)
+        else:
+            print("[WARN] Aucun fichier à uploader.")
         
     except Exception as e:
         print(f"[ERROR] Exception dans main(): {e}")

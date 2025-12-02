@@ -170,37 +170,52 @@ def compute_features(df: pd.DataFrame) -> pd.DataFrame:
     df["target_price"] = df["close_price"].shift(-4)
     return df
 
-def list_latest_artifacts():
-    # Essayer de télécharger les fichiers les plus récents depuis HF si configuré
-    # On suppose des noms fixes pour simplifier, ou on liste via API HF (plus complexe)
-    # Ici on va chercher les fichiers générés par le pipeline avec timestamp
-    # Pour simplifier l'exemple Serverless, on va chercher les fichiers génériques s'ils existent
-    # ou on scanne le dossier local après tentative de download
-    
-    # Liste des fichiers attendus (patterns)
-    # En mode serverless simple, on pourrait écraser le fichier 'latest' sur HF
-    # Mais le script d'entrainement génère des timestamps.
-    # Pour faire simple: on regarde ce qu'on a en local (potentiellement téléchargé)
-    
-    # Si HF est configuré, on essaie de récupérer la liste des fichiers du repo
+def list_latest_artifacts(symbol: str = None):
+    """
+    Récupère les artefacts les plus récents.
+    Si symbol est fourni, cherche d'abord les modèles spécifiques à ce symbole.
+    """
+    # Patterns de recherche
+    if symbol:
+        # Priorité aux modèles spécifiques : crypto_regressor_lgbm_BTCUSDT_...
+        reg_pattern = f"crypto_regressor_lgbm_{symbol}_"
+        clf_pattern = f"crypto_classifier_lgbm_{symbol}_"
+        feat_reg_pattern = f"regressor_features_{symbol}_"
+        feat_clf_pattern = f"classifier_features_{symbol}_"
+    else:
+        # Fallback générique (anciens modèles ou si pas de symbole)
+        reg_pattern = "crypto_regressor_lgbm_"
+        clf_pattern = "crypto_classifier_lgbm_"
+        feat_reg_pattern = "regressor_features_"
+        feat_clf_pattern = "classifier_features_"
+
+    # Téléchargement HF si configuré
     if HF_REPO_ID and HF_TOKEN:
         from huggingface_hub import HfApi
         try:
             api = HfApi(token=HF_TOKEN)
             files = api.list_repo_files(repo_id=HF_REPO_ID, repo_type="model")
-            # Filtrer et télécharger les plus récents
-            for pattern in ["crypto_regressor_lgbm_", "crypto_classifier_lgbm_", "regressor_features_", "classifier_features_"]:
-                matches = [f for f in files if pattern in f and f.endswith((".joblib", ".json"))]
+            
+            # On cherche les fichiers correspondant au pattern
+            patterns_to_sync = [reg_pattern, clf_pattern, feat_reg_pattern, feat_clf_pattern]
+            
+            for pat in patterns_to_sync:
+                matches = [f for f in files if pat in f and f.endswith((".joblib", ".json"))]
                 matches.sort(reverse=True) # Le plus récent d'après le nom (timestamp)
                 if matches:
+                    # On télécharge le plus récent
                     download_from_hf(matches[0])
         except Exception as e:
             st.warning(f"Erreur listing HF: {e}")
 
-    reg_m = sorted(ALGO_DIR.glob("crypto_regressor_lgbm_*.joblib"), key=lambda p: p.stat().st_mtime, reverse=True)
-    clf_m = sorted(ALGO_DIR.glob("crypto_classifier_lgbm_*.joblib"), key=lambda p: p.stat().st_mtime, reverse=True)
-    reg_f = sorted(ALGO_DIR.glob("regressor_features_*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
-    clf_f = sorted(ALGO_DIR.glob("classifier_features_*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+    # Recherche locale
+    reg_m = sorted(ALGO_DIR.glob(f"{reg_pattern}*.joblib"), key=lambda p: p.stat().st_mtime, reverse=True)
+    clf_m = sorted(ALGO_DIR.glob(f"{clf_pattern}*.joblib"), key=lambda p: p.stat().st_mtime, reverse=True)
+    reg_f = sorted(ALGO_DIR.glob(f"{feat_reg_pattern}*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+    clf_f = sorted(ALGO_DIR.glob(f"{feat_clf_pattern}*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+    
+    # Si on n'a rien trouvé avec le symbole spécifique, on peut tenter le fallback générique (optionnel)
+    # Ici on reste strict : si on demande BTCUSDT, on veut le modèle BTCUSDT.
     
     reg_model = reg_m[0] if reg_m else None
     clf_model = clf_m[0] if clf_m else None
@@ -257,9 +272,9 @@ def plot_feature_importances(names, importances, title="Importances des features
     return fig
 
 @st.cache_resource(ttl=3600) # Cache d'une heure pour éviter de recharger à chaque interaction
-def get_models_and_features():
-    """Charge les modèles et listes de features les plus récents (avec cache)."""
-    reg_model_path, clf_model_path, reg_feat_path, clf_feat_path = list_latest_artifacts()
+def get_models_and_features(symbol: str = None):
+    """Charge les modèles et listes de features les plus récents pour un symbole donné."""
+    reg_model_path, clf_model_path, reg_feat_path, clf_feat_path = list_latest_artifacts(symbol)
     if not all([reg_model_path, clf_model_path, reg_feat_path, clf_feat_path]):
         return None
     reg_model = joblib.load(reg_model_path)
@@ -347,7 +362,7 @@ def render():
                         api_result = None  # force fallback
                 if api_result is None:
                     if bundle is None:
-                        bundle = get_models_and_features()
+                        bundle = get_models_and_features(sym_top)
                     if not bundle:
                         st.warning("⚠️ Modèles introuvables. Veuillez configurer HF_TOKEN/HF_REPO_ID dans les Secrets et uploader les modèles (.joblib) sur Hugging Face, ou les placer dans `crypto/algo_crypto`.")
                     else:
@@ -587,7 +602,7 @@ def render():
                 months_eval = st.slider("Fenêtre (mois)", 3, 48, 12, step=3, key="ml4_eval_months")
                 roll_w = st.slider("Fenêtre MAE roulante (pas)", 12, 200, 48, help="Nombre de points (heures)")
             try:
-                bundle = get_models_and_features()
+                bundle = get_models_and_features(sym)
                 if not bundle:
                     st.warning("Artefacts manquants pour l'évaluation.")
                     st.stop()
@@ -659,7 +674,7 @@ def render():
             
             init_cap = st.number_input("Capital initial (USDT)", min_value=100.0, max_value=1000000.0, value=1000.0, step=100.0)
             try:
-                bundle = get_models_and_features()
+                bundle = get_models_and_features(sym_b)
                 if not bundle:
                     st.info("Artefacts manquants pour le backtest classification.")
                 else:
