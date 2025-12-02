@@ -655,7 +655,7 @@ def render():
                 fee = st.slider("Frais (bps)", 0, 50, 10, help="1 bps = 0.01% – appliqués aux changements de position") / 10000.0
             
             # Ajout du seuil de confiance
-            threshold = st.slider("Seuil de confiance (proba)", 0.34, 0.95, 0.50, step=0.01, help="Probabilité minimale pour prendre position (sinon Hold)")
+            threshold = st.slider("Seuil de confiance (proba)", 0.20, 0.95, 0.50, step=0.01, help="Probabilité minimale pour prendre position (sinon Hold)")
             
             init_cap = st.number_input("Capital initial (USDT)", min_value=100.0, max_value=1000000.0, value=1000.0, step=100.0)
             try:
