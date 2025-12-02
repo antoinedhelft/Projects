@@ -147,8 +147,18 @@ def compute_features(df: pd.DataFrame) -> pd.DataFrame:
     df['bb_width'] = bb_indicator.bollinger_wband()
     
     # Distance SMA
-    df['dist_sma_24h'] = (df['close_price'] - df['close_price'].rolling(window=24).mean()) / df['close_price']
+    sma_24 = df['close_price'].rolling(window=24).mean()
+    sma_72 = df['close_price'].rolling(window=72).mean()
+    
+    df['dist_sma_24h'] = (df['close_price'] - sma_24) / df['close_price']
     df['dist_sma_168h'] = (df['close_price'] - df['close_price'].rolling(window=168).mean()) / df['close_price']
+
+    # --- NOUVEAU : Croisement de Moyennes Mobiles (Golden Cross / Death Cross) ---
+    df['sma_cross_24_72'] = (sma_24 - sma_72) / sma_72
+
+    # --- NOUVEAU : Force de la tendance (ADX) ---
+    adx_indicator = ta.trend.ADXIndicator(df['high_price'], df['low_price'], df['close_price'], window=14)
+    df['adx'] = adx_indicator.adx() / 100.0 # Normalisé entre 0 et 1
 
     # Caractéristiques temporelles
     ts = pd.to_datetime(df["timestamp"])
