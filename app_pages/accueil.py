@@ -15,3 +15,5 @@ def render():
         """
         #- Trail : Suivi et analyse de mes performances en course à pied.   
     )
+
+    st.button("🔄 Rafraîchir la page", on_click=lambda: st.rerun())
