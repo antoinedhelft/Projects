@@ -22,6 +22,7 @@ def render():
             padding: 0.2rem 0.6rem;
             border-radius: 999px;
             background: #f0f2f6;
+            color: #31333F;
             font-size: 0.85rem;
             margin-right: 0.4rem;
         }
@@ -35,7 +36,7 @@ def render():
     col1, col2 = st.columns([1, 3])
     with col1:
         st.image(
-            "https://avatars.githubusercontent.com/u/9919?s=200&v=4",  # Remplace par ta photo/logo
+            "https://avatars.githubusercontent.com/u/9919?s=200&v=4",  # Remplacer par ma photo
             width=120,
             caption="Antoine – Pharmacien / Data Engineer",
         )
