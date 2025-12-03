@@ -50,7 +50,7 @@ def render():
             Parcourez une sélection de mes projets personnels.
             """,
         )
-        st.markdown("<span class='pill'>Python</span><span class='pill'>Data</span><span class='pill'>Machine Learning</span><span class='pill'>Viz</span>", unsafe_allow_html=True)
+        st.markdown("<span class='pill'>Python</span><span class='pill'>SQL / NoSQL</span><span class='pill'>Machine Learning</span><span class='pill'>Docker</span><span class='pill'>Airflow</span><span class='pill'>Power BI</span>", unsafe_allow_html=True)
 
     st.markdown("---")
     st.subheader("📌 Aperçu")
