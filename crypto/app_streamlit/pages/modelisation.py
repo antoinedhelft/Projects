@@ -669,9 +669,16 @@ def render():
             with colb3:
                 fee = st.slider("Frais (bps)", 0, 50, 10, help="1 bps = 0.01% – appliqués aux changements de position") / 10000.0
             
-            # Ajout du seuil de confiance
-            threshold = st.slider("Seuil de confiance (proba)", 0.20, 0.95, 0.50, step=0.01, help="Probabilité minimale pour prendre position (sinon Hold)")
+            # Seuils de confiance asymétriques
+            st.caption("Seuils de décision (Confiance du modèle)")
+            col_th1, col_th2 = st.columns(2)
+            with col_th1:
+                threshold_buy = st.slider("Seuil Achat (Hausse)", 0.20, 0.95, 0.60, step=0.01, help="Probabilité min pour Acheter", key="th_buy")
+            with col_th2:
+                threshold_sell = st.slider("Seuil Vente (Baisse)", 0.20, 0.95, 0.50, step=0.01, help="Probabilité min pour Vendre", key="th_sell")
             
+            adx_min = st.slider("Filtre ADX Min", 0, 50, 20, help="Si ADX < seuil, on ne trade pas (marché plat).")
+
             init_cap = st.number_input("Capital initial (USDT)", min_value=100.0, max_value=1000000.0, value=1000.0, step=100.0)
             try:
                 bundle = get_models_and_features(sym_b)
@@ -691,13 +698,14 @@ def render():
                         # Si le modèle supporte les probas (RandomForest le fait)
                         probas = bundle["clf_model"].predict_proba(Xc)
                         # probas est un tableau (N, 3) -> [Prob_Baisse, Prob_Stable, Prob_Hausse]
-                        
+                        adx_vals = dff["adx"].values * 100.0 # Echelle 0-100
+
                         signals = []
                         current_pos = 0 # 0=Hold, 1=Buy, -1=Sell
                         hold_counter = 0 # Compteur pour la durée minimale de détention
                         MIN_HOLD_PERIOD = 4 # On garde la position au moins 4h (horizon de prédiction)
 
-                        for p in probas:
+                        for i, p in enumerate(probas):
                             # p[0]=Baisse, p[1]=Stable, p[2]=Hausse
                             
                             # Logique de "Cooldown" : Si on vient de prendre position, on la garde un peu
@@ -714,9 +722,13 @@ def render():
 
                             # Logique de décision standard
                             new_signal = 'Hold'
-                            if p[2] >= threshold:
+                            
+                            # Filtre ADX : Si le marché est plat, on reste Cash (Hold)
+                            if adx_vals[i] < adx_min:
+                                new_signal = 'Hold'
+                            elif p[2] >= threshold_buy:
                                 new_signal = 'Buy'
-                            elif p[0] >= threshold:
+                            elif p[0] >= threshold_sell:
                                 new_signal = 'Sell'
                             
                             # Mise à jour de la position et du compteur
