@@ -31,9 +31,9 @@ from app_pages.car_pollution import render as render_car_pollution  # type: igno
 
 PAGES = {
     "Accueil": render_accueil,
-    "Médicaments": render_medicaments,
-    "Crypto": render_crypto,
-    "Pollution VL": render_car_pollution,
+    "Médicaments de Vilels": render_medicaments,
+    "Bot Cryptomonnaies": render_crypto,
+    "Pollution Véhicules Légers": render_car_pollution,
     #"Trail": render_trail
 }
 
