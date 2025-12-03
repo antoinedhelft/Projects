@@ -64,36 +64,36 @@ def render():
 
     with c1:
         st.markdown("### 💊 Médicaments")
-        st.markdown("<div class='card'>", unsafe_allow_html=True)
         st.write(
             "Analyse des coûts de prise en charge des médicaments en ville (France) "
-            "à différents niveaux de classification ATC."
+            "à différents niveaux de classification ATC (Anatomical Therapeutic Chemical Classification System)."
         )
         st.caption("ATC • Sécurité sociale • Data viz")
         if st.button("Ouvrir la page Médicaments", key="btn_med"):
-            st.switch_page("medicaments/app.py")  # adapte le chemin si tu
+            st.session_state["selected_page"] = "Médicaments de Ville"
+            st.rerun()
 
     with c2:
         st.markdown("### 🪙 Cryptomonnaies")
-        st.markdown("<div class='card'>", unsafe_allow_html=True)
         st.write(
             "Création d'un bot permettant la prédiction de la valeur des cryptomonnaies "
             "à court terme (4h) et des probabilités de hausse, baisse ou stagnation."
         )
         st.caption("Cryptomonnaies • Prédiction • Machine Learning")
         if st.button("Ouvrir la page Cryptomonnaies", key="btn_crypto"):
-            st.switch_page("cryptomonnaies/app.py")  # adapte le chemin si tu
+            st.session_state["selected_page"] = "Bot Cryptomonnaies"
+            st.rerun()
 
     with c3:
         st.markdown("### 🌫️ Pollution Véhicules Légers")
-        st.markdown("<div class='card'>", unsafe_allow_html=True)
         st.write(
             "Analyses des émissions polluantes des Véhicules Légers (VL) et de leurs "
             "incidences sur les tendances d'achat chez les particuliers en France."
         )
         st.caption("Pollution • Véhicules Légers • Data viz")
         if st.button("Ouvrir la page Pollution Véhicules Légers", key="btn_poll"):
-            st.switch_page("pollution/app.py")  # adapte le chemin si tu
+            st.session_state["selected_page"] = "Pollution Véhicules Légers"
+            st.rerun()
 
     if st.button("🔄 Rafraîchir la page"):
         st.rerun()

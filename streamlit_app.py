@@ -37,7 +37,7 @@ PAGES = {
     #"Trail": render_trail
 }
 
-selection = st.sidebar.radio("Aller à", list(PAGES.keys()), index=0)
+selection = st.sidebar.radio("Aller à", list(PAGES.keys()), index=0, key="selected_page")
 
 # Conserver la sélection dans l’URL si elle est prise en charge (au mieux, sans erreur fatale)
 # try:
