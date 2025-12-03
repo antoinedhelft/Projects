@@ -2,7 +2,9 @@ import streamlit as st
 
 
 def render():
-    st.set_page_config(page_title="Portfolio – Antoine", page_icon="📁", layout="wide")
+    # La configuration de la page doit se faire dans le fichier principal (main.py)
+    # au tout début, avant l'import de cette fonction.
+    # st.set_page_config(page_title="Portfolio – Antoine", page_icon="📁", layout="wide")
 
     # Style léger pour les cards
     st.markdown(
