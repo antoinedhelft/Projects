@@ -2,8 +2,8 @@ name: Hourly Data Update
 
 on:
   schedule:
-    - cron: '0 * * * *' # Run at minute 0 of every hour
-  workflow_dispatch: # Allow manual trigger
+    - cron: '*/15 * * * *' # run tous les 15 minutes
+  workflow_dispatch: # Permet de lancer manuellement depuis github
 
 jobs:
   update-data:
@@ -26,7 +26,7 @@ jobs:
     - name: Run Incremental Update
       env:
         DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        # Add the script directory to PYTHONPATH so imports work correctly if needed
+        # Ajout de PYTHONPATH pour s'assurer que les modules sont trouvés correctement
         PYTHONPATH: ${{ github.workspace }}/crypto/scripts/data_pipeline
       run: |
         python crypto/scripts/data_pipeline/incremental_update.py
