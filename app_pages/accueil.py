@@ -59,6 +59,10 @@ def render():
         unsafe_allow_html=True,
     )
 
+    # Helper pour la navigation
+    def _set_page(page):
+        st.session_state["selected_page"] = page
+
     # Grille de projets
     c1, c2, c3 = st.columns(3)
 
@@ -69,9 +73,7 @@ def render():
             "à différents niveaux de classification ATC (Anatomical Therapeutic Chemical Classification System)."
         )
         st.caption("ATC • Sécurité sociale • Data viz")
-        if st.button("Ouvrir la page Médicaments", key="btn_med"):
-            st.session_state["selected_page"] = "Médicaments de Ville"
-            st.rerun()
+        st.button("Ouvrir la page Médicaments", key="btn_med", on_click=_set_page, args=("Médicaments de Ville",))
 
     with c2:
         st.markdown("### 🪙 Cryptomonnaies")
@@ -80,9 +82,7 @@ def render():
             "à court terme (4h) et des probabilités de hausse, baisse ou stagnation."
         )
         st.caption("Cryptomonnaies • Prédiction • Machine Learning")
-        if st.button("Ouvrir la page Cryptomonnaies", key="btn_crypto"):
-            st.session_state["selected_page"] = "Bot Cryptomonnaies"
-            st.rerun()
+        st.button("Ouvrir la page Cryptomonnaies", key="btn_crypto", on_click=_set_page, args=("Bot Cryptomonnaies",))
 
     with c3:
         st.markdown("### 🌫️ Pollution Véhicules Légers")
@@ -91,9 +91,7 @@ def render():
             "incidences sur les tendances d'achat chez les particuliers en France."
         )
         st.caption("Pollution • Véhicules Légers • Data viz")
-        if st.button("Ouvrir la page Pollution Véhicules Légers", key="btn_poll"):
-            st.session_state["selected_page"] = "Pollution Véhicules Légers"
-            st.rerun()
+        st.button("Ouvrir la page Pollution Véhicules Légers", key="btn_poll", on_click=_set_page, args=("Pollution Véhicules Légers",))
 
     if st.button("🔄 Rafraîchir la page"):
         st.rerun()
