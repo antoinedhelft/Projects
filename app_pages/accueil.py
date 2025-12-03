@@ -42,7 +42,7 @@ def render():
         )
     with col2:
         st.title("Mes projets")
-        st.write("Bienvenue sur mon portfolio.")
+        st.header("Bienvenue sur mon portfolio.")
         st.markdown(
             """
             Bonjour, moi c’est **Antoine**, Pharmacien / **Data Engineer**.  
