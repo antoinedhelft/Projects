@@ -687,10 +687,22 @@ def render():
             col_risk1, col_risk2 = st.columns(2)
             with col_risk1:
                 use_stop_loss = st.checkbox("🛑 Activer Stop Loss", value=True)
-                stop_loss_pct = st.slider("Stop Loss (%)", 1.0, 10.0, 3.0, 0.5, help="Perte max avant sortie forcée", disabled=not use_stop_loss)
+                use_dynamic_sl = st.checkbox("📉 Stop Loss Dynamique (ATR)", value=False, help="Adapte le SL à la volatilité actuelle", disabled=not use_stop_loss)
+                if use_dynamic_sl:
+                    atr_multiplier = st.slider("Multiplicateur ATR", 1.0, 4.0, 1.5, 0.25, help="SL = ATR × multiplicateur")
+                    stop_loss_pct = 0.0  # Sera calculé dynamiquement
+                else:
+                    atr_multiplier = 1.5  # Valeur par défaut
+                    stop_loss_pct = st.slider("Stop Loss (%)", 1.0, 10.0, 3.0, 0.5, help="Perte max avant sortie forcée", disabled=not use_stop_loss)
             with col_risk2:
                 use_take_profit = st.checkbox("🎯 Activer Take Profit", value=True)
-                take_profit_pct = st.slider("Take Profit (%)", 2.0, 20.0, 6.0, 0.5, help="Gain cible avant prise de profits", disabled=not use_take_profit)
+                use_dynamic_tp = st.checkbox("📈 Take Profit Dynamique (ATR)", value=False, help="Adapte le TP à la volatilité actuelle", disabled=not use_take_profit)
+                if use_dynamic_tp:
+                    tp_atr_multiplier = st.slider("Multiplicateur ATR (TP)", 2.0, 6.0, 3.0, 0.5, help="TP = ATR × multiplicateur")
+                    take_profit_pct = 0.0  # Sera calculé dynamiquement
+                else:
+                    tp_atr_multiplier = 3.0  # Valeur par défaut
+                    take_profit_pct = st.slider("Take Profit (%)", 2.0, 20.0, 6.0, 0.5, help="Gain cible avant prise de profits", disabled=not use_take_profit)
             
             use_trailing_stop = st.checkbox("📈 Activer Trailing Stop", value=False, help="Stop Loss dynamique qui suit les gains")
             trailing_activation_pct = st.slider("Activation Trailing (%)", 1.0, 10.0, 2.0, 0.5, help="Gain min pour activer le trailing stop", disabled=not use_trailing_stop)
@@ -718,6 +730,7 @@ def render():
                         # probas est un tableau (N, 3) -> [Prob_Baisse, Prob_Stable, Prob_Hausse]
                         adx_vals = dff["adx"].values * 100.0 # Echelle 0-100
                         sma_cross_vals = dff["sma_cross_24_72"].values
+                        atr_pct_vals = dff["atr_pct"].values * 100.0  # ATR en % du prix
 
                         signals = []
                         current_pos = 0 # 0=Hold, 1=Buy, -1=Sell
@@ -726,6 +739,7 @@ def render():
                         
                         # === Variables pour la gestion du risque ===
                         entry_price = None  # Prix d'entrée en position
+                        entry_atr_pct = None  # ATR au moment de l'entrée (pour SL/TP dynamique)
                         highest_since_entry = None  # Plus haut depuis l'entrée (pour trailing)
                         lowest_since_entry = None  # Plus bas depuis l'entrée (pour short)
                         prices = dff["close_price"].values
@@ -734,6 +748,10 @@ def render():
                         stop_loss_hits = 0
                         take_profit_hits = 0
                         trailing_stop_hits = 0
+                        
+                        # Stats pour SL/TP dynamique
+                        dynamic_sl_values = []  # Pour afficher la moyenne
+                        dynamic_tp_values = []
 
                         for i, p in enumerate(probas):
                             # p[0]=Baisse, p[1]=Stable, p[2]=Hausse
@@ -744,6 +762,17 @@ def render():
                             exit_reason = None
                             
                             if current_pos != 0 and entry_price is not None:
+                                # Calcul du SL/TP dynamique ou fixe
+                                if use_dynamic_sl and entry_atr_pct is not None:
+                                    current_sl_pct = entry_atr_pct * atr_multiplier
+                                else:
+                                    current_sl_pct = stop_loss_pct
+                                
+                                if use_dynamic_tp and entry_atr_pct is not None:
+                                    current_tp_pct = entry_atr_pct * tp_atr_multiplier
+                                else:
+                                    current_tp_pct = take_profit_pct
+                                
                                 # Calcul du P&L en cours
                                 if current_pos == 1:  # Position Long
                                     pnl_pct = (current_price - entry_price) / entry_price * 100
@@ -756,14 +785,14 @@ def render():
                                     if lowest_since_entry is None or current_price < lowest_since_entry:
                                         lowest_since_entry = current_price
                                 
-                                # Stop Loss
-                                if use_stop_loss and pnl_pct <= -stop_loss_pct:
+                                # Stop Loss (dynamique ou fixe)
+                                if use_stop_loss and pnl_pct <= -current_sl_pct:
                                     forced_exit = True
                                     exit_reason = 'stop_loss'
                                     stop_loss_hits += 1
                                 
-                                # Take Profit
-                                elif use_take_profit and pnl_pct >= take_profit_pct:
+                                # Take Profit (dynamique ou fixe)
+                                elif use_take_profit and pnl_pct >= current_tp_pct:
                                     forced_exit = True
                                     exit_reason = 'take_profit'
                                     take_profit_hits += 1
@@ -834,20 +863,33 @@ def render():
                                 if current_pos != 1: # Changement de position
                                     hold_counter = MIN_HOLD_PERIOD
                                     entry_price = current_price  # Enregistrer le prix d'entrée
+                                    entry_atr_pct = atr_pct_vals[i]  # ATR au moment de l'entrée
                                     highest_since_entry = current_price
                                     lowest_since_entry = None
+                                    # Stats
+                                    if use_dynamic_sl:
+                                        dynamic_sl_values.append(entry_atr_pct * atr_multiplier)
+                                    if use_dynamic_tp:
+                                        dynamic_tp_values.append(entry_atr_pct * tp_atr_multiplier)
                                 current_pos = 1
                             elif new_signal == 'Sell':
                                 if current_pos != -1: # Changement de position
                                     hold_counter = MIN_HOLD_PERIOD
                                     entry_price = current_price  # Enregistrer le prix d'entrée
+                                    entry_atr_pct = atr_pct_vals[i]  # ATR au moment de l'entrée
                                     lowest_since_entry = current_price
                                     highest_since_entry = None
+                                    # Stats
+                                    if use_dynamic_sl:
+                                        dynamic_sl_values.append(entry_atr_pct * atr_multiplier)
+                                    if use_dynamic_tp:
+                                        dynamic_tp_values.append(entry_atr_pct * tp_atr_multiplier)
                                 current_pos = -1
                             else:
                                 # Sortie de position
                                 if current_pos != 0:
                                     entry_price = None
+                                    entry_atr_pct = None
                                     highest_since_entry = None
                                     lowest_since_entry = None
                                 current_pos = 0
@@ -915,9 +957,17 @@ def render():
                         st.markdown("##### 📊 Statistiques de Gestion du Risque")
                         risk_cols = st.columns(3)
                         if use_stop_loss:
-                            risk_cols[0].metric("🛑 Stop Loss déclenchés", stop_loss_hits)
+                            sl_label = "🛑 Stop Loss déclenchés"
+                            if use_dynamic_sl and dynamic_sl_values:
+                                avg_sl = np.mean(dynamic_sl_values)
+                                sl_label = f"🛑 SL Dynamique (moy: {avg_sl:.2f}%)"
+                            risk_cols[0].metric(sl_label, stop_loss_hits)
                         if use_take_profit:
-                            risk_cols[1].metric("🎯 Take Profit déclenchés", take_profit_hits)
+                            tp_label = "🎯 Take Profit déclenchés"
+                            if use_dynamic_tp and dynamic_tp_values:
+                                avg_tp = np.mean(dynamic_tp_values)
+                                tp_label = f"🎯 TP Dynamique (moy: {avg_tp:.2f}%)"
+                            risk_cols[1].metric(tp_label, take_profit_hits)
                         if use_trailing_stop:
                             risk_cols[2].metric("📈 Trailing Stop déclenchés", trailing_stop_hits)
                     
