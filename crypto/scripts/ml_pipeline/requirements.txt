@@ -6,3 +6,5 @@ joblib
 psutil
 ta
 lightgbm
+optuna
+huggingface_hub

@@ -214,6 +214,24 @@ def list_latest_artifacts(symbol: str = None):
     reg_f = sorted(ALGO_DIR.glob(f"{feat_reg_pattern}*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
     clf_f = sorted(ALGO_DIR.glob(f"{feat_clf_pattern}*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
     
+    # Fallback: Si pas de modèle spécifique, chercher un modèle global (sans symbole dans le nom)
+    if not reg_m and symbol:
+        all_reg = sorted(ALGO_DIR.glob("crypto_regressor_lgbm_*.joblib"), key=lambda p: p.stat().st_mtime, reverse=True)
+        # On garde ceux qui n'ont pas le format ..._SYMBOL_... (Global model: crypto_regressor_lgbm_TIMESTAMP -> 4 parties)
+        reg_m = [p for p in all_reg if len(p.stem.split('_')) == 4]
+        
+    if not clf_m and symbol:
+        all_clf = sorted(ALGO_DIR.glob("crypto_classifier_lgbm_*.joblib"), key=lambda p: p.stat().st_mtime, reverse=True)
+        clf_m = [p for p in all_clf if len(p.stem.split('_')) == 4]
+
+    if not reg_f and symbol:
+        all_rf = sorted(ALGO_DIR.glob("regressor_features_*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+        reg_f = [p for p in all_rf if len(p.stem.split('_')) == 3] # regressor_features_TIMESTAMP -> 3 parties
+        
+    if not clf_f and symbol:
+        all_cf = sorted(ALGO_DIR.glob("classifier_features_*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+        clf_f = [p for p in all_cf if len(p.stem.split('_')) == 3]
+    
     # Si on n'a rien trouvé avec le symbole spécifique, on peut tenter le fallback générique (optionnel)
     # Ici on reste strict : si on demande BTCUSDT, on veut le modèle BTCUSDT.
     

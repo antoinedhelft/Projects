@@ -31,4 +31,4 @@ jobs:
         HF_REPO_ID: ${{ secrets.HF_REPO_ID }}
         PYTHONPATH: ${{ github.workspace }}/crypto
       run: |
-        python crypto/scripts/ml_pipeline/pipeline_train.py
+        python crypto/scripts/ml_pipeline/train_optimized.py
