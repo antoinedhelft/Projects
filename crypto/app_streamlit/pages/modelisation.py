@@ -313,15 +313,15 @@ def render():
                 st.error(f"Impossible de lancer le script : {e}")
 
     tabs = st.tabs([
-        "4.1 Problème & choix d’algorithmes",
-        "4.2 Pré-traitements & justification",
-        "4.3 DataViz & statistiques",
-        "4.4 Évaluation & baseline"
+        "4.1 Estimations & directions",
+        "4.2 Aperçu des valeurs",
+        "4.3 DataViz & Distribution",
+        "4.4 Évaluation"
     ])
 
 
     with tabs[0]:
-        st.header("4.1 Problème & choix d’algorithmes")
+        st.header("4.1 Estimation & direction")
         st.info("🎯 **Mission :** Assister la décision de trading à court terme")
 
         # Sélecteur de crypto en haut
@@ -457,8 +457,8 @@ def render():
 
 
     with tabs[1]:
-        st.header("4.2 Pré-traitements & Justification 🧪")
-        st.info("💡 **Objectif :** Transformer les **bougies brutes** en **variables explicatives** pour les modèles. ➡️")
+        st.header("4.2 Aperçu des valeurs 🧪")
+        st.info("💡 **Objectif :** Transformer les **bougies brutes** en **variables explicatives** pour comprendre les tendances. ➡️")
 
         st.write("---")
 
@@ -557,7 +557,7 @@ def render():
 
 
     with tabs[2]:
-        st.header("4.3 DataViz & statistiques")
+        st.header("4.3 DataViz & Distribution")
         symbols = list_symbols()
         if not symbols:
             st.warning("Aucun symbole actif en base.")
@@ -586,7 +586,7 @@ def render():
 
 
     with tabs[3]:
-        st.header("4.4 Évaluation & comparaison à une baseline")
+        st.header("4.4 Évaluation")
         md_justify(
             """
             Méthode : comparaison au naïf « persistance » (prix(t + 4h) ≈ close(t)).
@@ -678,6 +678,8 @@ def render():
                 threshold_sell = st.slider("Seuil Vente (Baisse)", 0.20, 0.95, 0.50, step=0.01, help="Probabilité min pour Vendre", key="th_sell")
             
             adx_min = st.slider("Filtre ADX Min", 0, 50, 20, help="Si ADX < seuil, on ne trade pas (marché plat).")
+            
+            use_trend_filter = st.checkbox("🛡️ Activer filtre de tendance (SMA 24 > SMA 72)", value=True, help="Si activé, on achète uniquement si la tendance est haussière.")
 
             init_cap = st.number_input("Capital initial (USDT)", min_value=100.0, max_value=1000000.0, value=1000.0, step=100.0)
             try:
@@ -699,6 +701,7 @@ def render():
                         probas = bundle["clf_model"].predict_proba(Xc)
                         # probas est un tableau (N, 3) -> [Prob_Baisse, Prob_Stable, Prob_Hausse]
                         adx_vals = dff["adx"].values * 100.0 # Echelle 0-100
+                        sma_cross_vals = dff["sma_cross_24_72"].values
 
                         signals = []
                         current_pos = 0 # 0=Hold, 1=Buy, -1=Sell
@@ -726,10 +729,23 @@ def render():
                             # Filtre ADX : Si le marché est plat, on reste Cash (Hold)
                             if adx_vals[i] < adx_min:
                                 new_signal = 'Hold'
-                            elif p[2] >= threshold_buy:
-                                new_signal = 'Buy'
-                            elif p[0] >= threshold_sell:
-                                new_signal = 'Sell'
+                            else:
+                                # Logique ML + Tendance
+                                is_uptrend = sma_cross_vals[i] > 0
+                                
+                                if use_trend_filter:
+                                    # Stratégie Tendance : On n'achète que si Tendance Hausse + Signal ML Achat
+                                    if is_uptrend and p[2] >= threshold_buy:
+                                        new_signal = 'Buy'
+                                    # On vend si Tendance Baisse OU Signal ML Vente (Protection)
+                                    elif (not is_uptrend) or (p[0] >= threshold_sell):
+                                        new_signal = 'Sell'
+                                else:
+                                    # Stratégie Standard (ML pur)
+                                    if p[2] >= threshold_buy:
+                                        new_signal = 'Buy'
+                                    elif p[0] >= threshold_sell:
+                                        new_signal = 'Sell'
                             
                             # Mise à jour de la position et du compteur
                             if new_signal == 'Buy':
