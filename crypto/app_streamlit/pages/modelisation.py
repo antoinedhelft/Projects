@@ -173,7 +173,7 @@ def compute_features(df: pd.DataFrame) -> pd.DataFrame:
 def list_latest_artifacts(symbol: str = None):
     """
     Récupère les artefacts les plus récents (Global ou Spécifique).
-    Stratégie : On prend le plus récent compatible.
+    Télécharge explicitement le meilleur modèle Global ET le meilleur modèle Spécifique (si demandé).
     """
     # Téléchargement HF si configuré
     if HF_REPO_ID and HF_TOKEN:
@@ -182,7 +182,6 @@ def list_latest_artifacts(symbol: str = None):
             api = HfApi(token=HF_TOKEN)
             files = api.list_repo_files(repo_id=HF_REPO_ID, repo_type="model")
             
-            # On cherche les fichiers les plus récents pour chaque type
             prefixes = [
                 "crypto_regressor_lgbm_", 
                 "crypto_classifier_lgbm_", 
@@ -191,13 +190,33 @@ def list_latest_artifacts(symbol: str = None):
             ]
             
             for prefix in prefixes:
-                # Tous les fichiers correspondant au préfixe (Global ou Spécifique)
-                matches = [f for f in files if f.startswith(prefix) and f.endswith((".joblib", ".json"))]
-                matches.sort(reverse=True) # Le plus récent d'après le nom (timestamp)
+                # 1. Chercher le meilleur GLOBAL (format: prefix_TIMESTAMP)
+                # On filtre ceux qui ont exactement le bon nombre de parties (pas de symbole au milieu)
+                base_parts = len(prefix.strip('_').split('_'))
                 
-                if matches:
-                    # On télécharge le tout dernier (le plus récent absolu)
-                    download_from_hf(matches[0])
+                globals_matches = []
+                specific_matches = []
+                
+                for f in files:
+                    if not f.startswith(prefix) or not f.endswith((".joblib", ".json")):
+                        continue
+                        
+                    parts = f.replace('.joblib', '').replace('.json', '').split('_')
+                    # Global: prefix parts + date + time (ex: 3 + 2 = 5)
+                    if len(parts) == base_parts + 2:
+                        globals_matches.append(f)
+                    # Specific: prefix parts + SYMBOL + date + time (ex: 3 + 1 + 2 = 6)
+                    elif symbol and f"_{symbol}_" in f:
+                        specific_matches.append(f)
+
+                # Trier et télécharger le meilleur de chaque catégorie
+                globals_matches.sort(reverse=True)
+                specific_matches.sort(reverse=True)
+                
+                if globals_matches:
+                    download_from_hf(globals_matches[0])
+                if specific_matches:
+                    download_from_hf(specific_matches[0])
                     
         except Exception as e:
             st.warning(f"Erreur listing HF: {e}")
@@ -207,20 +226,22 @@ def list_latest_artifacts(symbol: str = None):
     
     def find_best_match(prefix, sym):
         candidates = []
+        base_parts = len(prefix.strip('_').split('_'))
+        
         for p in all_files:
             if p.name.startswith(prefix) and (p.suffix in [".joblib", ".json"]):
-                # Vérifier si c'est compatible
                 parts = p.stem.split('_')
-                # Format Global: prefix_TIMESTAMP (ex: crypto_classifier_lgbm_20251204_1200) -> len parts dépend du prefix
-                # Format Spécifique: prefix_SYMBOL_TIMESTAMP
                 
+                # Vérification stricte du format pour éviter les faux positifs
+                is_global = (len(parts) == base_parts + 2)
                 is_specific = (sym and f"_{sym}_" in p.name)
-                is_global = (len(parts) == len(prefix.strip('_').split('_')) + 2) # +2 pour date et heure
                 
-                if is_specific or is_global:
+                if is_specific:
+                    return p # Priorité absolue au spécifique
+                if is_global:
                     candidates.append(p)
         
-        # Comme all_files est trié par date modif, le premier est le plus récent téléchargé/créé
+        # Si pas de spécifique, on prend le meilleur global trouvé
         return candidates[0] if candidates else None
 
     reg_model = find_best_match("crypto_regressor_lgbm", symbol)
