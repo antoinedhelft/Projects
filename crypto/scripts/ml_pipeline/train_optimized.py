@@ -47,8 +47,8 @@ def prepare_targets(df, horizon_hours=4):
     # On ajoute un seuil minimal pour couvrir les frais (ex: 0.2%)
     threshold = 0.002 
     
-    future_close = df['close'].shift(-horizon_hours)
-    df[f'target_{horizon_hours}h'] = (future_close > df['close'] * (1 + threshold)).astype(int)
+    future_close = df['close_price'].shift(-horizon_hours)
+    df[f'target_{horizon_hours}h'] = (future_close > df['close_price'] * (1 + threshold)).astype(int)
     
     # On retire les dernières lignes qui n'ont pas de target (NaN dans future_close)
     return df.dropna(subset=[f'target_{horizon_hours}h'])
@@ -141,7 +141,7 @@ def main():
     
     # Sauvegarde de la liste des features pour l'inférence
     # On exclut les colonnes techniques/targets
-    feature_cols = [c for c in df.columns if c not in ['open_datetime', 'symbol', 'close', 'high', 'low', 'open', 'volume']]
+    feature_cols = [c for c in df.columns if c not in ['open_datetime', 'symbol', 'close_price', 'target_price']]
     # On filtre aussi les targets si elles existent déjà
     feature_cols = [c for c in feature_cols if not c.startswith('target_')]
     
