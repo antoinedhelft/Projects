@@ -681,28 +681,27 @@ def render():
             
             use_trend_filter = st.checkbox("🛡️ Activer filtre de tendance (SMA 24 > SMA 72)", value=True, help="Si activé, on achète uniquement si la tendance est haussière.")
 
+            # === Filtres Améliorés ===
+            st.markdown("---")
+            st.caption("🎯 Filtres de Timing")
+            col_filt1, col_filt2 = st.columns(2)
+            with col_filt1:
+                use_confirmation = st.checkbox("⏳ Délai de Confirmation", value=True, help="Attendre N heures de signal constant avant d'entrer")
+                confirmation_hours = st.slider("Heures de confirmation", 1, 6, 2, 1, help="Nb d'heures consécutives avec le même signal", disabled=not use_confirmation)
+            with col_filt2:
+                use_anti_fomo = st.checkbox("🚫 Anti-FOMO", value=True, help="Ne pas acheter après une forte hausse récente")
+                anti_fomo_pct = st.slider("Seuil Anti-FOMO (%)", 1.0, 5.0, 2.0, 0.5, help="Si prix a monté de X% en 4h, on n'achète pas", disabled=not use_anti_fomo)
+
             # === Gestion du Risque (Money Management) ===
             st.markdown("---")
             st.caption("💼 Gestion du Risque")
             col_risk1, col_risk2 = st.columns(2)
             with col_risk1:
                 use_stop_loss = st.checkbox("🛑 Activer Stop Loss", value=True)
-                use_dynamic_sl = st.checkbox("📉 Stop Loss Dynamique (ATR)", value=False, help="Adapte le SL à la volatilité actuelle", disabled=not use_stop_loss)
-                if use_dynamic_sl:
-                    atr_multiplier = st.slider("Multiplicateur ATR", 1.0, 4.0, 1.5, 0.25, help="SL = ATR × multiplicateur")
-                    stop_loss_pct = 0.0  # Sera calculé dynamiquement
-                else:
-                    atr_multiplier = 1.5  # Valeur par défaut
-                    stop_loss_pct = st.slider("Stop Loss (%)", 1.0, 10.0, 3.0, 0.5, help="Perte max avant sortie forcée", disabled=not use_stop_loss)
+                stop_loss_pct = st.slider("Stop Loss (%)", 1.0, 10.0, 3.0, 0.5, help="Perte max avant sortie forcée", disabled=not use_stop_loss)
             with col_risk2:
                 use_take_profit = st.checkbox("🎯 Activer Take Profit", value=True)
-                use_dynamic_tp = st.checkbox("📈 Take Profit Dynamique (ATR)", value=False, help="Adapte le TP à la volatilité actuelle", disabled=not use_take_profit)
-                if use_dynamic_tp:
-                    tp_atr_multiplier = st.slider("Multiplicateur ATR (TP)", 2.0, 6.0, 3.0, 0.5, help="TP = ATR × multiplicateur")
-                    take_profit_pct = 0.0  # Sera calculé dynamiquement
-                else:
-                    tp_atr_multiplier = 3.0  # Valeur par défaut
-                    take_profit_pct = st.slider("Take Profit (%)", 2.0, 20.0, 6.0, 0.5, help="Gain cible avant prise de profits", disabled=not use_take_profit)
+                take_profit_pct = st.slider("Take Profit (%)", 2.0, 20.0, 6.0, 0.5, help="Gain cible avant prise de profits", disabled=not use_take_profit)
             
             use_trailing_stop = st.checkbox("📈 Activer Trailing Stop", value=False, help="Stop Loss dynamique qui suit les gains")
             trailing_activation_pct = st.slider("Activation Trailing (%)", 1.0, 10.0, 2.0, 0.5, help="Gain min pour activer le trailing stop", disabled=not use_trailing_stop)
@@ -730,28 +729,28 @@ def render():
                         # probas est un tableau (N, 3) -> [Prob_Baisse, Prob_Stable, Prob_Hausse]
                         adx_vals = dff["adx"].values * 100.0 # Echelle 0-100
                         sma_cross_vals = dff["sma_cross_24_72"].values
-                        atr_pct_vals = dff["atr_pct"].values * 100.0  # ATR en % du prix
+                        prices = dff["close_price"].values
 
                         signals = []
                         current_pos = 0 # 0=Hold, 1=Buy, -1=Sell
                         hold_counter = 0 # Compteur pour la durée minimale de détention
                         MIN_HOLD_PERIOD = 4 # On garde la position au moins 4h (horizon de prédiction)
                         
+                        # === Variables pour le délai de confirmation ===
+                        pending_signal = None  # Signal en attente de confirmation
+                        pending_count = 0  # Nombre d'heures consécutives avec ce signal
+                        
                         # === Variables pour la gestion du risque ===
                         entry_price = None  # Prix d'entrée en position
-                        entry_atr_pct = None  # ATR au moment de l'entrée (pour SL/TP dynamique)
                         highest_since_entry = None  # Plus haut depuis l'entrée (pour trailing)
                         lowest_since_entry = None  # Plus bas depuis l'entrée (pour short)
-                        prices = dff["close_price"].values
                         
                         # Compteurs pour les stats
                         stop_loss_hits = 0
                         take_profit_hits = 0
                         trailing_stop_hits = 0
-                        
-                        # Stats pour SL/TP dynamique
-                        dynamic_sl_values = []  # Pour afficher la moyenne
-                        dynamic_tp_values = []
+                        anti_fomo_blocks = 0
+                        confirmation_delays = 0
 
                         for i, p in enumerate(probas):
                             # p[0]=Baisse, p[1]=Stable, p[2]=Hausse
@@ -762,17 +761,6 @@ def render():
                             exit_reason = None
                             
                             if current_pos != 0 and entry_price is not None:
-                                # Calcul du SL/TP dynamique ou fixe
-                                if use_dynamic_sl and entry_atr_pct is not None:
-                                    current_sl_pct = entry_atr_pct * atr_multiplier
-                                else:
-                                    current_sl_pct = stop_loss_pct
-                                
-                                if use_dynamic_tp and entry_atr_pct is not None:
-                                    current_tp_pct = entry_atr_pct * tp_atr_multiplier
-                                else:
-                                    current_tp_pct = take_profit_pct
-                                
                                 # Calcul du P&L en cours
                                 if current_pos == 1:  # Position Long
                                     pnl_pct = (current_price - entry_price) / entry_price * 100
@@ -785,14 +773,14 @@ def render():
                                     if lowest_since_entry is None or current_price < lowest_since_entry:
                                         lowest_since_entry = current_price
                                 
-                                # Stop Loss (dynamique ou fixe)
-                                if use_stop_loss and pnl_pct <= -current_sl_pct:
+                                # Stop Loss
+                                if use_stop_loss and pnl_pct <= -stop_loss_pct:
                                     forced_exit = True
                                     exit_reason = 'stop_loss'
                                     stop_loss_hits += 1
                                 
-                                # Take Profit (dynamique ou fixe)
-                                elif use_take_profit and pnl_pct >= current_tp_pct:
+                                # Take Profit
+                                elif use_take_profit and pnl_pct >= take_profit_pct:
                                     forced_exit = True
                                     exit_reason = 'take_profit'
                                     take_profit_hits += 1
@@ -835,11 +823,11 @@ def render():
                                 continue
 
                             # Logique de décision standard
-                            new_signal = 'Hold'
+                            raw_signal = 'Hold'  # Signal brut du ML
                             
                             # Filtre ADX : Si le marché est plat, on reste Cash (Hold)
                             if adx_vals[i] < adx_min:
-                                new_signal = 'Hold'
+                                raw_signal = 'Hold'
                             else:
                                 # Logique ML + Tendance
                                 is_uptrend = sma_cross_vals[i] > 0
@@ -847,49 +835,70 @@ def render():
                                 if use_trend_filter:
                                     # Stratégie Tendance : On n'achète que si Tendance Hausse + Signal ML Achat
                                     if is_uptrend and p[2] >= threshold_buy:
-                                        new_signal = 'Buy'
+                                        raw_signal = 'Buy'
                                     # On vend si Tendance Baisse OU Signal ML Vente (Protection)
                                     elif (not is_uptrend) or (p[0] >= threshold_sell):
-                                        new_signal = 'Sell'
+                                        raw_signal = 'Sell'
                                 else:
                                     # Stratégie Standard (ML pur)
                                     if p[2] >= threshold_buy:
-                                        new_signal = 'Buy'
+                                        raw_signal = 'Buy'
                                     elif p[0] >= threshold_sell:
-                                        new_signal = 'Sell'
+                                        raw_signal = 'Sell'
+                            
+                            # === FILTRE ANTI-FOMO ===
+                            # Ne pas acheter si le prix a déjà beaucoup monté récemment
+                            if use_anti_fomo and raw_signal == 'Buy' and i >= 4:
+                                price_4h_ago = prices[i - 4]
+                                recent_move_pct = (current_price - price_4h_ago) / price_4h_ago * 100
+                                if recent_move_pct >= anti_fomo_pct:
+                                    raw_signal = 'Hold'  # On bloque l'achat (FOMO)
+                                    anti_fomo_blocks += 1
+                            
+                            # === DELAI DE CONFIRMATION ===
+                            # Attendre N heures de signal constant avant d'entrer
+                            new_signal = 'Hold'
+                            if use_confirmation:
+                                if raw_signal == pending_signal and raw_signal != 'Hold':
+                                    pending_count += 1
+                                    if pending_count >= confirmation_hours:
+                                        new_signal = raw_signal  # Signal confirmé !
+                                        confirmation_delays += 1
+                                else:
+                                    # Nouveau signal ou Hold : reset
+                                    pending_signal = raw_signal
+                                    pending_count = 1 if raw_signal != 'Hold' else 0
+                                    # Si c'est un signal de vente urgent, on l'exécute quand même
+                                    if raw_signal == 'Sell' and current_pos == 1:
+                                        new_signal = 'Sell'  # Protection : sortir vite
+                            else:
+                                new_signal = raw_signal
                             
                             # Mise à jour de la position et du compteur
                             if new_signal == 'Buy':
                                 if current_pos != 1: # Changement de position
                                     hold_counter = MIN_HOLD_PERIOD
                                     entry_price = current_price  # Enregistrer le prix d'entrée
-                                    entry_atr_pct = atr_pct_vals[i]  # ATR au moment de l'entrée
                                     highest_since_entry = current_price
                                     lowest_since_entry = None
-                                    # Stats
-                                    if use_dynamic_sl:
-                                        dynamic_sl_values.append(entry_atr_pct * atr_multiplier)
-                                    if use_dynamic_tp:
-                                        dynamic_tp_values.append(entry_atr_pct * tp_atr_multiplier)
+                                    # Reset confirmation
+                                    pending_signal = None
+                                    pending_count = 0
                                 current_pos = 1
                             elif new_signal == 'Sell':
                                 if current_pos != -1: # Changement de position
                                     hold_counter = MIN_HOLD_PERIOD
                                     entry_price = current_price  # Enregistrer le prix d'entrée
-                                    entry_atr_pct = atr_pct_vals[i]  # ATR au moment de l'entrée
                                     lowest_since_entry = current_price
                                     highest_since_entry = None
-                                    # Stats
-                                    if use_dynamic_sl:
-                                        dynamic_sl_values.append(entry_atr_pct * atr_multiplier)
-                                    if use_dynamic_tp:
-                                        dynamic_tp_values.append(entry_atr_pct * tp_atr_multiplier)
+                                    # Reset confirmation
+                                    pending_signal = None
+                                    pending_count = 0
                                 current_pos = -1
                             else:
                                 # Sortie de position
                                 if current_pos != 0:
                                     entry_price = None
-                                    entry_atr_pct = None
                                     highest_since_entry = None
                                     lowest_since_entry = None
                                 current_pos = 0
@@ -953,23 +962,24 @@ def render():
                     c2b.metric("Max drawdown (BH)", f"{dd_bh:.2f}%")
                     
                     # === Stats de gestion du risque ===
-                    if use_stop_loss or use_take_profit or use_trailing_stop:
+                    if use_stop_loss or use_take_profit or use_trailing_stop or use_anti_fomo or use_confirmation:
                         st.markdown("##### 📊 Statistiques de Gestion du Risque")
                         risk_cols = st.columns(3)
                         if use_stop_loss:
-                            sl_label = "🛑 Stop Loss déclenchés"
-                            if use_dynamic_sl and dynamic_sl_values:
-                                avg_sl = np.mean(dynamic_sl_values)
-                                sl_label = f"🛑 SL Dynamique (moy: {avg_sl:.2f}%)"
-                            risk_cols[0].metric(sl_label, stop_loss_hits)
+                            risk_cols[0].metric("🛑 Stop Loss déclenchés", stop_loss_hits)
                         if use_take_profit:
-                            tp_label = "🎯 Take Profit déclenchés"
-                            if use_dynamic_tp and dynamic_tp_values:
-                                avg_tp = np.mean(dynamic_tp_values)
-                                tp_label = f"🎯 TP Dynamique (moy: {avg_tp:.2f}%)"
-                            risk_cols[1].metric(tp_label, take_profit_hits)
+                            risk_cols[1].metric("🎯 Take Profit déclenchés", take_profit_hits)
                         if use_trailing_stop:
                             risk_cols[2].metric("📈 Trailing Stop déclenchés", trailing_stop_hits)
+                        
+                        # Stats des nouveaux filtres
+                        if use_anti_fomo or use_confirmation:
+                            st.markdown("##### 🎯 Statistiques des Filtres de Timing")
+                            filter_cols = st.columns(2)
+                            if use_anti_fomo:
+                                filter_cols[0].metric("🚫 Achats bloqués (FOMO)", anti_fomo_blocks)
+                            if use_confirmation:
+                                filter_cols[1].metric("⏳ Signaux confirmés", confirmation_delays)
                     
                     st.caption("Remarque: l'équité est simulée en USDT avec capital initial configurable. Les frais sont appliqués aux changements de position (1 trade entrée/sortie, 2 trades pour inversion).")
             except Exception as e:
