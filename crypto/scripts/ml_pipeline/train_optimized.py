@@ -34,31 +34,36 @@ TEST_START_DATE = "2024-10-01" # Période de test (jamais vue par le modèle)
 
 def prepare_targets(df, horizon_hours=4):
     """
-    Crée la target: 1 si le prix monte de X% dans les H prochaines heures, sinon 0.
-    Utilise une logique de seuil dynamique (ATR) ou fixe.
-    Pour simplifier et rester robuste: Target = Close futur > Close actuel + Fee
+    Crée la target Multiclasse:
+    0 = Baisse (<-0.2%)
+    1 = Stable (entre -0.2% et +0.2%)
+    2 = Hausse (>+0.2%)
     """
-    # On décale le close vers le haut (futur)
-    # Si horizon = 4h, on regarde le close dans 4 lignes (si données horaires)
-    # Attention: df est indexé par temps, il faut s'assurer du pas de temps.
-    # Ici on suppose des données horaires pour simplifier, ou on utilise shift.
-    
-    # Target simple : Est-ce que le prix sera plus haut dans H heures ?
-    # On ajoute un seuil minimal pour couvrir les frais (ex: 0.2%)
-    threshold = 0.002 
+    threshold = 0.002 # 0.2%
     
     future_close = df['close_price'].shift(-horizon_hours)
-    df[f'target_{horizon_hours}h'] = (future_close > df['close_price'] * (1 + threshold)).astype(int)
+    returns = (future_close - df['close_price']) / df['close_price']
+    
+    # Initialisation à 1 (Stable)
+    target_col = f'target_{horizon_hours}h'
+    df[target_col] = 1
+    
+    # 0 (Baisse)
+    df.loc[returns < -threshold, target_col] = 0
+    
+    # 2 (Hausse)
+    df.loc[returns > threshold, target_col] = 2
     
     # On retire les dernières lignes qui n'ont pas de target (NaN dans future_close)
-    return df.dropna(subset=[f'target_{horizon_hours}h'])
+    return df.dropna(subset=[target_col])
 
 def objective(trial, X_train, y_train, X_val, y_val):
     """Fonction objectif pour Optuna"""
     
     params = {
-        'objective': 'binary',
-        'metric': 'binary_logloss',
+        'objective': 'multiclass',
+        'num_class': 3,
+        'metric': 'multi_logloss',
         'verbosity': -1,
         'boosting_type': 'gbdt',
         'class_weight': 'balanced', # CRUCIAL: Gère le déséquilibre Bull/Bear
@@ -86,13 +91,13 @@ def objective(trial, X_train, y_train, X_val, y_val):
     model.fit(
         X_train, y_train,
         eval_set=[(X_val, y_val)],
-        eval_metric='f1',
+        eval_metric='multi_logloss',
         callbacks=callbacks
     )
     
-    # On optimise sur le F1-score de la classe 1 (Achat)
+    # On optimise sur le F1-score pondéré (weighted) pour prendre en compte toutes les classes
     preds = model.predict(X_val)
-    f1 = f1_score(y_val, preds)
+    f1 = f1_score(y_val, preds, average='weighted')
     
     return f1
 
@@ -201,8 +206,9 @@ def main():
         
         final_params = study.best_params
         final_params.update({
-            'objective': 'binary',
-            'metric': 'binary_logloss',
+            'objective': 'multiclass',
+            'num_class': 3,
+            'metric': 'multi_logloss',
             'boosting_type': 'gbdt',
             'class_weight': 'balanced',
             'n_estimators': 1000
@@ -221,7 +227,7 @@ def main():
         # Ici on écrase le modèle principal si le score est bon, ou on peut sauver par horizon
         # Pour l'instant, on sauvegarde le modèle de l'horizon 4h par défaut ou le meilleur
         
-        current_f1 = f1_score(y_test, preds_test)
+        current_f1 = f1_score(y_test, preds_test, average='weighted')
         if current_f1 > best_overall_f1:
             best_overall_f1 = current_f1
             print(f"[INFO] Nouveau meilleur modèle trouvé (Horizon {h}h) !")
