@@ -679,18 +679,23 @@ def render():
             
             adx_min = st.slider("Filtre ADX Min", 0, 50, 20, help="Si ADX < seuil, on ne trade pas (marché plat).")
             
-            use_trend_filter = st.checkbox("🛡️ Activer filtre de tendance (SMA 24 > SMA 72)", value=True, help="Si activé, on achète uniquement si la tendance est haussière.")
-
-            # === Filtres Améliorés ===
+            # === Régime de Marché ===
             st.markdown("---")
-            st.caption("🎯 Filtres de Timing")
-            col_filt1, col_filt2 = st.columns(2)
-            with col_filt1:
-                use_confirmation = st.checkbox("⏳ Délai de Confirmation", value=True, help="Attendre N heures de signal constant avant d'entrer")
-                confirmation_hours = st.slider("Heures de confirmation", 1, 6, 2, 1, help="Nb d'heures consécutives avec le même signal", disabled=not use_confirmation)
-            with col_filt2:
-                use_anti_fomo = st.checkbox("🚫 Anti-FOMO", value=True, help="Ne pas acheter après une forte hausse récente")
-                anti_fomo_pct = st.slider("Seuil Anti-FOMO (%)", 1.0, 5.0, 2.0, 0.5, help="Si prix a monté de X% en 4h, on n'achète pas", disabled=not use_anti_fomo)
+            st.caption("🌍 Régime de Marché")
+            market_regime = st.radio(
+                "Sélectionnez le régime de marché",
+                ["Neutre (ML pur)", "Bull Market 📈", "Bear Market 📉"],
+                index=0,
+                horizontal=True,
+                help="Adapte la stratégie au contexte de marché actuel"
+            )
+            
+            if market_regime == "Bull Market 📈":
+                st.info("📈 **Mode Bull**: Agressif à l'achat, prudent à la vente. On garde les positions plus longtemps.")
+            elif market_regime == "Bear Market 📉":
+                st.info("📉 **Mode Bear**: Prudent à l'achat, agressif à la vente. On protège le capital.")
+            else:
+                st.info("⚖️ **Mode Neutre**: Stratégie équilibrée basée uniquement sur les signaux ML.")
 
             # === Gestion du Risque (Money Management) ===
             st.markdown("---")
@@ -736,10 +741,6 @@ def render():
                         hold_counter = 0 # Compteur pour la durée minimale de détention
                         MIN_HOLD_PERIOD = 4 # On garde la position au moins 4h (horizon de prédiction)
                         
-                        # === Variables pour le délai de confirmation ===
-                        pending_signal = None  # Signal en attente de confirmation
-                        pending_count = 0  # Nombre d'heures consécutives avec ce signal
-                        
                         # === Variables pour la gestion du risque ===
                         entry_price = None  # Prix d'entrée en position
                         highest_since_entry = None  # Plus haut depuis l'entrée (pour trailing)
@@ -749,8 +750,6 @@ def render():
                         stop_loss_hits = 0
                         take_profit_hits = 0
                         trailing_stop_hits = 0
-                        anti_fomo_blocks = 0
-                        confirmation_delays = 0
 
                         for i, p in enumerate(probas):
                             # p[0]=Baisse, p[1]=Stable, p[2]=Hausse
@@ -822,57 +821,48 @@ def render():
                                     signals.append('Hold')
                                 continue
 
-                            # Logique de décision standard
-                            raw_signal = 'Hold'  # Signal brut du ML
+                            # Logique de décision selon le régime de marché
+                            new_signal = 'Hold'
                             
                             # Filtre ADX : Si le marché est plat, on reste Cash (Hold)
                             if adx_vals[i] < adx_min:
-                                raw_signal = 'Hold'
+                                new_signal = 'Hold'
                             else:
-                                # Logique ML + Tendance
                                 is_uptrend = sma_cross_vals[i] > 0
                                 
-                                if use_trend_filter:
-                                    # Stratégie Tendance : On n'achète que si Tendance Hausse + Signal ML Achat
-                                    if is_uptrend and p[2] >= threshold_buy:
-                                        raw_signal = 'Buy'
-                                    # On vend si Tendance Baisse OU Signal ML Vente (Protection)
-                                    elif (not is_uptrend) or (p[0] >= threshold_sell):
-                                        raw_signal = 'Sell'
+                                if market_regime == "Bull Market 📈":
+                                    # MODE BULL : Agressif à l'achat, prudent à la vente
+                                    # On achète plus facilement (seuil bas)
+                                    # On vend uniquement sur signal fort
+                                    bull_buy_threshold = threshold_buy * 0.85  # -15% sur le seuil
+                                    bull_sell_threshold = threshold_sell * 1.20  # +20% sur le seuil
+                                    
+                                    if p[2] >= bull_buy_threshold:
+                                        new_signal = 'Buy'
+                                    elif p[0] >= bull_sell_threshold and not is_uptrend:
+                                        # Vendre seulement si signal fort ET tendance baisse
+                                        new_signal = 'Sell'
+                                    # Sinon on garde (Hold ou position actuelle)
+                                    
+                                elif market_regime == "Bear Market 📉":
+                                    # MODE BEAR : Prudent à l'achat, agressif à la vente
+                                    # On n'achète que si tendance + signal fort
+                                    # On vend facilement
+                                    bear_buy_threshold = threshold_buy * 1.15  # +15% sur le seuil
+                                    bear_sell_threshold = threshold_sell * 0.80  # -20% sur le seuil
+                                    
+                                    if is_uptrend and p[2] >= bear_buy_threshold:
+                                        new_signal = 'Buy'
+                                    elif p[0] >= bear_sell_threshold or not is_uptrend:
+                                        # Vendre sur signal OU tendance baisse
+                                        new_signal = 'Sell'
+                                        
                                 else:
-                                    # Stratégie Standard (ML pur)
+                                    # MODE NEUTRE : ML pur, équilibré
                                     if p[2] >= threshold_buy:
-                                        raw_signal = 'Buy'
+                                        new_signal = 'Buy'
                                     elif p[0] >= threshold_sell:
-                                        raw_signal = 'Sell'
-                            
-                            # === FILTRE ANTI-FOMO ===
-                            # Ne pas acheter si le prix a déjà beaucoup monté récemment
-                            if use_anti_fomo and raw_signal == 'Buy' and i >= 4:
-                                price_4h_ago = prices[i - 4]
-                                recent_move_pct = (current_price - price_4h_ago) / price_4h_ago * 100
-                                if recent_move_pct >= anti_fomo_pct:
-                                    raw_signal = 'Hold'  # On bloque l'achat (FOMO)
-                                    anti_fomo_blocks += 1
-                            
-                            # === DELAI DE CONFIRMATION ===
-                            # Attendre N heures de signal constant avant d'entrer
-                            new_signal = 'Hold'
-                            if use_confirmation:
-                                if raw_signal == pending_signal and raw_signal != 'Hold':
-                                    pending_count += 1
-                                    if pending_count >= confirmation_hours:
-                                        new_signal = raw_signal  # Signal confirmé !
-                                        confirmation_delays += 1
-                                else:
-                                    # Nouveau signal ou Hold : reset
-                                    pending_signal = raw_signal
-                                    pending_count = 1 if raw_signal != 'Hold' else 0
-                                    # Si c'est un signal de vente urgent, on l'exécute quand même
-                                    if raw_signal == 'Sell' and current_pos == 1:
-                                        new_signal = 'Sell'  # Protection : sortir vite
-                            else:
-                                new_signal = raw_signal
+                                        new_signal = 'Sell'
                             
                             # Mise à jour de la position et du compteur
                             if new_signal == 'Buy':
@@ -881,9 +871,6 @@ def render():
                                     entry_price = current_price  # Enregistrer le prix d'entrée
                                     highest_since_entry = current_price
                                     lowest_since_entry = None
-                                    # Reset confirmation
-                                    pending_signal = None
-                                    pending_count = 0
                                 current_pos = 1
                             elif new_signal == 'Sell':
                                 if current_pos != -1: # Changement de position
@@ -891,9 +878,6 @@ def render():
                                     entry_price = current_price  # Enregistrer le prix d'entrée
                                     lowest_since_entry = current_price
                                     highest_since_entry = None
-                                    # Reset confirmation
-                                    pending_signal = None
-                                    pending_count = 0
                                 current_pos = -1
                             else:
                                 # Sortie de position
@@ -962,7 +946,7 @@ def render():
                     c2b.metric("Max drawdown (BH)", f"{dd_bh:.2f}%")
                     
                     # === Stats de gestion du risque ===
-                    if use_stop_loss or use_take_profit or use_trailing_stop or use_anti_fomo or use_confirmation:
+                    if use_stop_loss or use_take_profit or use_trailing_stop:
                         st.markdown("##### 📊 Statistiques de Gestion du Risque")
                         risk_cols = st.columns(3)
                         if use_stop_loss:
@@ -971,15 +955,6 @@ def render():
                             risk_cols[1].metric("🎯 Take Profit déclenchés", take_profit_hits)
                         if use_trailing_stop:
                             risk_cols[2].metric("📈 Trailing Stop déclenchés", trailing_stop_hits)
-                        
-                        # Stats des nouveaux filtres
-                        if use_anti_fomo or use_confirmation:
-                            st.markdown("##### 🎯 Statistiques des Filtres de Timing")
-                            filter_cols = st.columns(2)
-                            if use_anti_fomo:
-                                filter_cols[0].metric("🚫 Achats bloqués (FOMO)", anti_fomo_blocks)
-                            if use_confirmation:
-                                filter_cols[1].metric("⏳ Signaux confirmés", confirmation_delays)
                     
                     st.caption("Remarque: l'équité est simulée en USDT avec capital initial configurable. Les frais sont appliqués aux changements de position (1 trade entrée/sortie, 2 trades pour inversion).")
             except Exception as e:
