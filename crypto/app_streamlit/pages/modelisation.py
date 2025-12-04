@@ -172,23 +172,9 @@ def compute_features(df: pd.DataFrame) -> pd.DataFrame:
 
 def list_latest_artifacts(symbol: str = None):
     """
-    Récupère les artefacts les plus récents.
-    Si symbol est fourni, cherche d'abord les modèles spécifiques à ce symbole.
+    Récupère les artefacts les plus récents (Global ou Spécifique).
+    Stratégie : On prend le plus récent compatible.
     """
-    # Patterns de recherche
-    if symbol:
-        # Priorité aux modèles spécifiques : crypto_regressor_lgbm_BTCUSDT_...
-        reg_pattern = f"crypto_regressor_lgbm_{symbol}_"
-        clf_pattern = f"crypto_classifier_lgbm_{symbol}_"
-        feat_reg_pattern = f"regressor_features_{symbol}_"
-        feat_clf_pattern = f"classifier_features_{symbol}_"
-    else:
-        # Fallback générique (anciens modèles ou si pas de symbole)
-        reg_pattern = "crypto_regressor_lgbm_"
-        clf_pattern = "crypto_classifier_lgbm_"
-        feat_reg_pattern = "regressor_features_"
-        feat_clf_pattern = "classifier_features_"
-
     # Téléchargement HF si configuré
     if HF_REPO_ID and HF_TOKEN:
         from huggingface_hub import HfApi
@@ -196,49 +182,51 @@ def list_latest_artifacts(symbol: str = None):
             api = HfApi(token=HF_TOKEN)
             files = api.list_repo_files(repo_id=HF_REPO_ID, repo_type="model")
             
-            # On cherche les fichiers correspondant au pattern
-            patterns_to_sync = [reg_pattern, clf_pattern, feat_reg_pattern, feat_clf_pattern]
+            # On cherche les fichiers les plus récents pour chaque type
+            prefixes = [
+                "crypto_regressor_lgbm_", 
+                "crypto_classifier_lgbm_", 
+                "regressor_features_", 
+                "classifier_features_"
+            ]
             
-            for pat in patterns_to_sync:
-                matches = [f for f in files if pat in f and f.endswith((".joblib", ".json"))]
+            for prefix in prefixes:
+                # Tous les fichiers correspondant au préfixe (Global ou Spécifique)
+                matches = [f for f in files if f.startswith(prefix) and f.endswith((".joblib", ".json"))]
                 matches.sort(reverse=True) # Le plus récent d'après le nom (timestamp)
+                
                 if matches:
-                    # On télécharge le plus récent
+                    # On télécharge le tout dernier (le plus récent absolu)
                     download_from_hf(matches[0])
+                    
         except Exception as e:
             st.warning(f"Erreur listing HF: {e}")
 
-    # Recherche locale
-    reg_m = sorted(ALGO_DIR.glob(f"{reg_pattern}*.joblib"), key=lambda p: p.stat().st_mtime, reverse=True)
-    clf_m = sorted(ALGO_DIR.glob(f"{clf_pattern}*.joblib"), key=lambda p: p.stat().st_mtime, reverse=True)
-    reg_f = sorted(ALGO_DIR.glob(f"{feat_reg_pattern}*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
-    clf_f = sorted(ALGO_DIR.glob(f"{feat_clf_pattern}*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+    # Recherche locale : On liste tout et on filtre
+    all_files = sorted(ALGO_DIR.glob("*"), key=lambda p: p.stat().st_mtime, reverse=True)
     
-    # Fallback: Si pas de modèle spécifique, chercher un modèle global (sans symbole dans le nom)
-    if not reg_m and symbol:
-        all_reg = sorted(ALGO_DIR.glob("crypto_regressor_lgbm_*.joblib"), key=lambda p: p.stat().st_mtime, reverse=True)
-        # On garde ceux qui n'ont pas le format ..._SYMBOL_... (Global model: crypto_regressor_lgbm_TIMESTAMP -> 4 parties)
-        reg_m = [p for p in all_reg if len(p.stem.split('_')) == 4]
+    def find_best_match(prefix, sym):
+        candidates = []
+        for p in all_files:
+            if p.name.startswith(prefix) and (p.suffix in [".joblib", ".json"]):
+                # Vérifier si c'est compatible
+                parts = p.stem.split('_')
+                # Format Global: prefix_TIMESTAMP (ex: crypto_classifier_lgbm_20251204_1200) -> len parts dépend du prefix
+                # Format Spécifique: prefix_SYMBOL_TIMESTAMP
+                
+                is_specific = (sym and f"_{sym}_" in p.name)
+                is_global = (len(parts) == len(prefix.strip('_').split('_')) + 2) # +2 pour date et heure
+                
+                if is_specific or is_global:
+                    candidates.append(p)
         
-    if not clf_m and symbol:
-        all_clf = sorted(ALGO_DIR.glob("crypto_classifier_lgbm_*.joblib"), key=lambda p: p.stat().st_mtime, reverse=True)
-        clf_m = [p for p in all_clf if len(p.stem.split('_')) == 4]
+        # Comme all_files est trié par date modif, le premier est le plus récent téléchargé/créé
+        return candidates[0] if candidates else None
 
-    if not reg_f and symbol:
-        all_rf = sorted(ALGO_DIR.glob("regressor_features_*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
-        reg_f = [p for p in all_rf if len(p.stem.split('_')) == 3] # regressor_features_TIMESTAMP -> 3 parties
-        
-    if not clf_f and symbol:
-        all_cf = sorted(ALGO_DIR.glob("classifier_features_*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
-        clf_f = [p for p in all_cf if len(p.stem.split('_')) == 3]
-    
-    # Si on n'a rien trouvé avec le symbole spécifique, on peut tenter le fallback générique (optionnel)
-    # Ici on reste strict : si on demande BTCUSDT, on veut le modèle BTCUSDT.
-    
-    reg_model = reg_m[0] if reg_m else None
-    clf_model = clf_m[0] if clf_m else None
-    reg_feats = reg_f[0] if reg_f else None
-    clf_feats = clf_f[0] if clf_f else None
+    reg_model = find_best_match("crypto_regressor_lgbm", symbol)
+    clf_model = find_best_match("crypto_classifier_lgbm", symbol)
+    reg_feats = find_best_match("regressor_features", symbol)
+    clf_feats = find_best_match("classifier_features", symbol)
     
     return reg_model, clf_model, reg_feats, clf_feats
 
