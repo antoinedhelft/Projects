@@ -221,9 +221,21 @@ def list_latest_artifacts(symbol: str = None):
         except Exception as e:
             st.warning(f"Erreur listing HF: {e}")
 
-    # Recherche locale : On liste tout et on filtre
-    all_files = sorted(ALGO_DIR.glob("*"), key=lambda p: p.stat().st_mtime, reverse=True)
+    # Recherche locale : On liste tout
+    all_files = list(ALGO_DIR.glob("*"))
     
+    def get_timestamp_from_filename(filename):
+        """Extrait le timestamp YYYYMMDD_HHMM à la fin du fichier"""
+        try:
+            # stem: crypto_classifier_lgbm_20251204_1821
+            parts = Path(filename).stem.split('_')
+            # On suppose que les 2 dernières parties sont date et heure
+            if len(parts) >= 2 and parts[-2].isdigit() and parts[-1].isdigit():
+                return int(parts[-2] + parts[-1]) # 202512041821
+        except:
+            pass
+        return 0
+
     def find_best_match(prefix, sym):
         candidates = []
         base_parts = len(prefix.strip('_').split('_'))
@@ -232,17 +244,17 @@ def list_latest_artifacts(symbol: str = None):
             if p.name.startswith(prefix) and (p.suffix in [".joblib", ".json"]):
                 parts = p.stem.split('_')
                 
-                # Vérification stricte du format pour éviter les faux positifs
                 is_global = (len(parts) == base_parts + 2)
                 is_specific = (sym and f"_{sym}_" in p.name)
                 
-                if is_specific:
-                    return p # Priorité absolue au spécifique
-                if is_global:
-                    candidates.append(p)
+                if is_specific or is_global:
+                    ts = get_timestamp_from_filename(p)
+                    candidates.append((ts, p))
         
-        # Si pas de spécifique, on prend le meilleur global trouvé
-        return candidates[0] if candidates else None
+        # On trie par timestamp décroissant (le plus récent en premier)
+        candidates.sort(key=lambda x: x[0], reverse=True)
+        
+        return candidates[0][1] if candidates else None
 
     reg_model = find_best_match("crypto_regressor_lgbm", symbol)
     clf_model = find_best_match("crypto_classifier_lgbm", symbol)
