@@ -681,6 +681,22 @@ def render():
             
             use_trend_filter = st.checkbox("🛡️ Activer filtre de tendance (SMA 24 > SMA 72)", value=True, help="Si activé, on achète uniquement si la tendance est haussière.")
 
+            # === Gestion du Risque (Money Management) ===
+            st.markdown("---")
+            st.caption("💼 Gestion du Risque")
+            col_risk1, col_risk2 = st.columns(2)
+            with col_risk1:
+                use_stop_loss = st.checkbox("🛑 Activer Stop Loss", value=True)
+                stop_loss_pct = st.slider("Stop Loss (%)", 1.0, 10.0, 3.0, 0.5, help="Perte max avant sortie forcée", disabled=not use_stop_loss)
+            with col_risk2:
+                use_take_profit = st.checkbox("🎯 Activer Take Profit", value=True)
+                take_profit_pct = st.slider("Take Profit (%)", 2.0, 20.0, 6.0, 0.5, help="Gain cible avant prise de profits", disabled=not use_take_profit)
+            
+            use_trailing_stop = st.checkbox("📈 Activer Trailing Stop", value=False, help="Stop Loss dynamique qui suit les gains")
+            trailing_activation_pct = st.slider("Activation Trailing (%)", 1.0, 10.0, 2.0, 0.5, help="Gain min pour activer le trailing stop", disabled=not use_trailing_stop)
+            trailing_distance_pct = st.slider("Distance Trailing (%)", 0.5, 5.0, 1.5, 0.25, help="Distance du stop par rapport au plus haut", disabled=not use_trailing_stop)
+            
+            st.markdown("---")
             init_cap = st.number_input("Capital initial (USDT)", min_value=100.0, max_value=1000000.0, value=1000.0, step=100.0)
             try:
                 bundle = get_models_and_features(sym_b)
@@ -707,9 +723,75 @@ def render():
                         current_pos = 0 # 0=Hold, 1=Buy, -1=Sell
                         hold_counter = 0 # Compteur pour la durée minimale de détention
                         MIN_HOLD_PERIOD = 4 # On garde la position au moins 4h (horizon de prédiction)
+                        
+                        # === Variables pour la gestion du risque ===
+                        entry_price = None  # Prix d'entrée en position
+                        highest_since_entry = None  # Plus haut depuis l'entrée (pour trailing)
+                        lowest_since_entry = None  # Plus bas depuis l'entrée (pour short)
+                        prices = dff["close_price"].values
+                        
+                        # Compteurs pour les stats
+                        stop_loss_hits = 0
+                        take_profit_hits = 0
+                        trailing_stop_hits = 0
 
                         for i, p in enumerate(probas):
                             # p[0]=Baisse, p[1]=Stable, p[2]=Hausse
+                            current_price = prices[i]
+                            
+                            # === GESTION DU RISQUE : Vérifier SL/TP/Trailing AVANT la logique ML ===
+                            forced_exit = False
+                            exit_reason = None
+                            
+                            if current_pos != 0 and entry_price is not None:
+                                # Calcul du P&L en cours
+                                if current_pos == 1:  # Position Long
+                                    pnl_pct = (current_price - entry_price) / entry_price * 100
+                                    # Mise à jour du plus haut
+                                    if highest_since_entry is None or current_price > highest_since_entry:
+                                        highest_since_entry = current_price
+                                else:  # Position Short
+                                    pnl_pct = (entry_price - current_price) / entry_price * 100
+                                    # Mise à jour du plus bas
+                                    if lowest_since_entry is None or current_price < lowest_since_entry:
+                                        lowest_since_entry = current_price
+                                
+                                # Stop Loss
+                                if use_stop_loss and pnl_pct <= -stop_loss_pct:
+                                    forced_exit = True
+                                    exit_reason = 'stop_loss'
+                                    stop_loss_hits += 1
+                                
+                                # Take Profit
+                                elif use_take_profit and pnl_pct >= take_profit_pct:
+                                    forced_exit = True
+                                    exit_reason = 'take_profit'
+                                    take_profit_hits += 1
+                                
+                                # Trailing Stop
+                                elif use_trailing_stop and pnl_pct >= trailing_activation_pct:
+                                    if current_pos == 1:  # Long
+                                        trailing_stop_price = highest_since_entry * (1 - trailing_distance_pct / 100)
+                                        if current_price <= trailing_stop_price:
+                                            forced_exit = True
+                                            exit_reason = 'trailing_stop'
+                                            trailing_stop_hits += 1
+                                    else:  # Short
+                                        trailing_stop_price = lowest_since_entry * (1 + trailing_distance_pct / 100)
+                                        if current_price >= trailing_stop_price:
+                                            forced_exit = True
+                                            exit_reason = 'trailing_stop'
+                                            trailing_stop_hits += 1
+                            
+                            # Si sortie forcée, on passe en Hold et on reset
+                            if forced_exit:
+                                current_pos = 0
+                                entry_price = None
+                                highest_since_entry = None
+                                lowest_since_entry = None
+                                hold_counter = 2  # Petit cooldown après sortie forcée
+                                signals.append('Hold')
+                                continue
                             
                             # Logique de "Cooldown" : Si on vient de prendre position, on la garde un peu
                             if hold_counter > 0:
@@ -751,12 +833,23 @@ def render():
                             if new_signal == 'Buy':
                                 if current_pos != 1: # Changement de position
                                     hold_counter = MIN_HOLD_PERIOD
+                                    entry_price = current_price  # Enregistrer le prix d'entrée
+                                    highest_since_entry = current_price
+                                    lowest_since_entry = None
                                 current_pos = 1
                             elif new_signal == 'Sell':
                                 if current_pos != -1: # Changement de position
                                     hold_counter = MIN_HOLD_PERIOD
+                                    entry_price = current_price  # Enregistrer le prix d'entrée
+                                    lowest_since_entry = current_price
+                                    highest_since_entry = None
                                 current_pos = -1
                             else:
+                                # Sortie de position
+                                if current_pos != 0:
+                                    entry_price = None
+                                    highest_since_entry = None
+                                    lowest_since_entry = None
                                 current_pos = 0
                             
                             signals.append(new_signal)
@@ -816,6 +909,18 @@ def render():
                     c2a, c2b = st.columns(2)
                     c2a.metric("Final Buy&Hold (USDT)", f"{bh_final:,.2f}")
                     c2b.metric("Max drawdown (BH)", f"{dd_bh:.2f}%")
-                    st.caption("Remarque: l’équité est simulée en USDT avec capital initial configurable. Les frais sont appliqués aux changements de position (1 trade entrée/sortie, 2 trades pour inversion).")
+                    
+                    # === Stats de gestion du risque ===
+                    if use_stop_loss or use_take_profit or use_trailing_stop:
+                        st.markdown("##### 📊 Statistiques de Gestion du Risque")
+                        risk_cols = st.columns(3)
+                        if use_stop_loss:
+                            risk_cols[0].metric("🛑 Stop Loss déclenchés", stop_loss_hits)
+                        if use_take_profit:
+                            risk_cols[1].metric("🎯 Take Profit déclenchés", take_profit_hits)
+                        if use_trailing_stop:
+                            risk_cols[2].metric("📈 Trailing Stop déclenchés", trailing_stop_hits)
+                    
+                    st.caption("Remarque: l'équité est simulée en USDT avec capital initial configurable. Les frais sont appliqués aux changements de position (1 trade entrée/sortie, 2 trades pour inversion).")
             except Exception as e:
                 st.error(f"Backtest classification indisponible: {e}")
