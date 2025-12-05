@@ -869,6 +869,10 @@ def render():
                             else:
                                 is_uptrend = sma_cross_vals[i] > 0
                                 
+                                # Gestion compatibilité binaire/multiclasse
+                                proba_buy = p[2] if len(p) > 2 else 0.0
+                                proba_sell = p[0]
+                                
                                 if market_regime == "Bull Market 📈":
                                     # MODE BULL : Agressif à l'achat, prudent à la vente
                                     # On achète plus facilement (seuil bas)
@@ -876,9 +880,9 @@ def render():
                                     bull_buy_threshold = threshold_buy * 0.85  # -15% sur le seuil
                                     bull_sell_threshold = threshold_sell * 1.20  # +20% sur le seuil
                                     
-                                    if p[2] >= bull_buy_threshold:
+                                    if proba_buy >= bull_buy_threshold:
                                         new_signal = 'Buy'
-                                    elif p[0] >= bull_sell_threshold and not is_uptrend:
+                                    elif proba_sell >= bull_sell_threshold and not is_uptrend:
                                         # Vendre seulement si signal fort ET tendance baisse
                                         new_signal = 'Sell'
                                     # Sinon on garde (Hold ou position actuelle)
@@ -890,17 +894,17 @@ def render():
                                     bear_buy_threshold = threshold_buy * 1.15  # +15% sur le seuil
                                     bear_sell_threshold = threshold_sell * 0.80  # -20% sur le seuil
                                     
-                                    if is_uptrend and p[2] >= bear_buy_threshold:
+                                    if is_uptrend and proba_buy >= bear_buy_threshold:
                                         new_signal = 'Buy'
-                                    elif p[0] >= bear_sell_threshold or not is_uptrend:
+                                    elif proba_sell >= bear_sell_threshold or not is_uptrend:
                                         # Vendre sur signal OU tendance baisse
                                         new_signal = 'Sell'
                                         
                                 else:
                                     # MODE NEUTRE : ML pur, équilibré
-                                    if p[2] >= threshold_buy:
+                                    if proba_buy >= threshold_buy:
                                         new_signal = 'Buy'
-                                    elif p[0] >= threshold_sell:
+                                    elif proba_sell >= threshold_sell:
                                         new_signal = 'Sell'
                             
                             # Mise à jour de la position et du compteur

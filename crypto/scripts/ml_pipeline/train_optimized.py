@@ -28,8 +28,8 @@ except ImportError as e:
 # -------------------------------------------------------------------
 # 2. CONFIGURATION
 # -------------------------------------------------------------------
-HORIZONS = [2, 4, 8]  # Heures de prédiction
-N_TRIALS = 30         # Nombre d'essais Optuna
+HORIZONS = [4]        # On se concentre sur l'horizon 4h pour gagner du temps
+N_TRIALS = 15         # 15 essais par crypto (suffisant pour converger)
 TEST_START_DATE = "2024-10-01" # Période de test (jamais vue par le modèle)
 
 def prepare_targets(df, horizon_hours=4):
@@ -154,90 +154,99 @@ def main():
         json.dump(feature_cols, f)
     print(f"[INFO] {len(feature_cols)} features identifiées.")
 
-    # 3. Boucle sur les horizons
-    best_overall_f1 = 0
-    best_model_path = None
+    # 3. Boucle sur les Symboles
+    symbols = df['symbol'].unique()
+    print(f"[INFO] Symboles trouvés: {symbols}")
     
-    for h in HORIZONS:
-        print(f"\n--- Optimisation pour Horizon {h}h ---")
-        
-        # Préparation Target
-        df_h = prepare_targets(df.copy(), horizon_hours=h)
-        target_col = f'target_{h}h'
-        
-        # Split Temporel (Train < Oct 2024 <= Test)
-        # On garde 2 mois pour la validation (Aout-Sept 2024)
-        # Train: Début -> Juillet 2024
-        
-        split_val_date = "2024-08-01"
-        
-        mask_train = (df_h.index < split_val_date)
-        mask_val = (df_h.index >= split_val_date) & (df_h.index < TEST_START_DATE)
-        mask_test = (df_h.index >= TEST_START_DATE)
-        
-        X_train = df_h.loc[mask_train, feature_cols]
-        y_train = df_h.loc[mask_train, target_col]
-        
-        X_val = df_h.loc[mask_val, feature_cols]
-        y_val = df_h.loc[mask_val, target_col]
-        
-        X_test = df_h.loc[mask_test, feature_cols]
-        y_test = df_h.loc[mask_test, target_col]
-        
-        print(f"Train set: {X_train.shape[0]} samples")
-        print(f"Val set:   {X_val.shape[0]} samples")
-        print(f"Test set:  {X_test.shape[0]} samples")
-        
-        if X_train.empty or X_val.empty:
-            print("[WARN] Pas assez de données pour ce split. Skip.")
-            continue
+    files_to_upload = []
+    
+    # Import ALGO_DIR pour sauvegarder proprement
+    from scripts.ml_pipeline.config import ALGO_DIR
+    timestamp = pd.Timestamp.now().strftime("%Y%m%d_%H%M")
 
-        # 4. Optimisation Optuna
-        print("[3/6] Recherche des hyperparamètres (Optuna)...")
-        study = optuna.create_study(direction='maximize')
-        study.optimize(lambda trial: objective(trial, X_train, y_train, X_val, y_val), n_trials=N_TRIALS)
+    for sym in symbols:
+        print(f"\n=== Optimisation pour {sym} ===")
+        df_sym = df[df['symbol'] == sym].copy()
         
-        print(f"Meilleurs params (F1={study.best_value:.4f}): {study.best_params}")
+        best_sym_f1 = 0
+        best_sym_model_path = None
         
-        # 5. Entraînement Final (Train + Val)
-        print("[4/6] Entraînement final...")
-        X_full_train = pd.concat([X_train, X_val])
-        y_full_train = pd.concat([y_train, y_val])
-        
-        final_params = study.best_params
-        final_params.update({
-            'objective': 'multiclass',
-            'num_class': 3,
-            'metric': 'multi_logloss',
-            'boosting_type': 'gbdt',
-            'class_weight': 'balanced',
-            'n_estimators': 1000
-        })
-        
-        model = lgb.LGBMClassifier(**final_params)
-        model.fit(X_full_train, y_full_train)
-        
-        # 6. Evaluation Test
-        print("[5/6] Evaluation sur le Test Set (Inconnu)...")
-        preds_test = model.predict(X_test)
-        report = classification_report(y_test, preds_test)
-        print(report)
-        
-        # Sauvegarde si c'est le meilleur horizon ou modèle unique
-        # Ici on écrase le modèle principal si le score est bon, ou on peut sauver par horizon
-        # Pour l'instant, on sauvegarde le modèle de l'horizon 4h par défaut ou le meilleur
-        
-        current_f1 = f1_score(y_test, preds_test, average='weighted')
-        if current_f1 > best_overall_f1:
-            best_overall_f1 = current_f1
-            print(f"[INFO] Nouveau meilleur modèle trouvé (Horizon {h}h) !")
-            joblib.dump(model, MODEL_CLF_PATH)
-            best_model_path = MODEL_CLF_PATH
+        for h in HORIZONS:
+            print(f"--- Horizon {h}h ---")
+            
+            # Préparation Target
+            df_h = prepare_targets(df_sym.copy(), horizon_hours=h)
+            target_col = f'target_{h}h'
+            
+            # Split Temporel
+            split_val_date = "2024-08-01"
+            
+            mask_train = (df_h.index < split_val_date)
+            mask_val = (df_h.index >= split_val_date) & (df_h.index < TEST_START_DATE)
+            mask_test = (df_h.index >= TEST_START_DATE)
+            
+            X_train = df_h.loc[mask_train, feature_cols]
+            y_train = df_h.loc[mask_train, target_col]
+            
+            X_val = df_h.loc[mask_val, feature_cols]
+            y_val = df_h.loc[mask_val, target_col]
+            
+            X_test = df_h.loc[mask_test, feature_cols]
+            y_test = df_h.loc[mask_test, target_col]
+            
+            if X_train.shape[0] < 100: # Trop peu de données
+                print(f"[WARN] Pas assez de données pour {sym}. Skip.")
+                continue
 
-    # 7. Upload
-    if best_model_path:
-        print("[6/6] Upload vers Hugging Face...")
-        upload_to_hf([MODEL_CLF_PATH, FEATURES_CLF_JSON])
+            # 4. Optimisation Optuna
+            study = optuna.create_study(direction='maximize')
+            study.optimize(lambda trial: objective(trial, X_train, y_train, X_val, y_val), n_trials=N_TRIALS)
+            
+            print(f"Meilleurs params {sym} (F1={study.best_value:.4f}): {study.best_params}")
+            
+            # 5. Entraînement Final
+            X_full_train = pd.concat([X_train, X_val])
+            y_full_train = pd.concat([y_train, y_val])
+            
+            final_params = study.best_params
+            final_params.update({
+                'objective': 'multiclass',
+                'num_class': 3,
+                'metric': 'multi_logloss',
+                'boosting_type': 'gbdt',
+                'class_weight': 'balanced',
+                'n_estimators': 1000
+            })
+            
+            model = lgb.LGBMClassifier(**final_params)
+            model.fit(X_full_train, y_full_train)
+            
+            # 6. Evaluation Test
+            preds_test = model.predict(X_test)
+            current_f1 = f1_score(y_test, preds_test, average='weighted')
+            print(f"Test F1 ({sym}): {current_f1:.4f}")
+            
+            # Sauvegarde du meilleur modèle pour ce symbole
+            if current_f1 > best_sym_f1:
+                best_sym_f1 = current_f1
+                # Nommage spécifique: crypto_classifier_lgbm_SYMBOL_TIMESTAMP.joblib
+                model_path = ALGO_DIR / f"crypto_classifier_lgbm_{sym}_{timestamp}.joblib"
+                joblib.dump(model, model_path)
+                best_sym_model_path = model_path
+                print(f"[INFO] Modèle sauvegardé: {model_path.name}")
+
+        if best_sym_model_path:
+            files_to_upload.append(best_sym_model_path)
+            # On sauvegarde aussi les features spécifiques (même si c'est souvent les mêmes)
+            feat_path = ALGO_DIR / f"classifier_features_{sym}_{timestamp}.json"
+            with open(feat_path, 'w') as f:
+                json.dump(feature_cols, f)
+            files_to_upload.append(feat_path)
+
+    # 7. Upload Global
+    if files_to_upload:
+        print(f"[6/6] Upload de {len(files_to_upload)} fichiers vers Hugging Face...")
+        upload_to_hf(files_to_upload)
     
     print("=== Terminé ===")
 
