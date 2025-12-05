@@ -28,15 +28,28 @@ except ImportError as e:
 # -------------------------------------------------------------------
 # 2. CONFIGURATION
 # -------------------------------------------------------------------
+# HORIZONS: Liste des horizons de prédiction en heures. Ici, on prédit à 4h.
 HORIZONS = [4]        # On se concentre sur l'horizon 4h pour gagner du temps
+# N_TRIALS: Nombre d'essais pour l'optimisation des hyperparamètres (Optuna).
 N_TRIALS = 15         # 15 essais par crypto (suffisant pour converger)
+# TEST_START_DATE: Date de début de l'ensemble de test (données jamais vues par le modèle).
 TEST_START_DATE = "2024-10-01" # Période de test (jamais vue par le modèle)
 
 def prepare_targets(df, horizon_hours=4):
     """
-    Crée les targets:
-    - Classification: 0 (Baisse), 1 (Stable), 2 (Hausse)
-    - Régression: Log Return (pour prédire le prix exact)
+    Crée les cibles (targets) pour l'entraînement :
+    
+    1. Target Régression (target_reg) : 
+       - On prédit le 'Log Return' (rendement logarithmique) plutôt que le prix brut.
+       - Formule : log(Prix_futur / Prix_actuel)
+       - Avantage : Plus stable et indépendant de l'échelle de prix (Bitcoin vs Altcoin).
+       
+    2. Target Classification (target_clf) :
+       - On catégorise le mouvement futur en 3 classes :
+         * 0 : Baisse (Return < -Seuil)
+         * 1 : Stable ( -Seuil <= Return <= +Seuil)
+         * 2 : Hausse (Return > +Seuil)
+       - Seuil actuel : 0.15% (0.0015). Cela permet de filtrer le bruit du marché.
     """
     threshold = 0.0015 # 0.15% (Resserré pour réduire la classe 'Stable')
     
@@ -53,18 +66,22 @@ def prepare_targets(df, horizon_hours=4):
     df.loc[returns < -threshold, target_col_clf] = 0
     df.loc[returns > threshold, target_col_clf] = 2
     
-    # On retire les dernières lignes (NaN)
+    # On retire les dernières lignes (NaN) car on ne connaît pas le futur pour elles
     return df.dropna(subset=[target_col_clf, f'target_reg_{horizon_hours}h'])
 
 def objective_clf(trial, X_train, y_train, X_val, y_val):
-    """Objectif Optuna pour la CLASSIFICATION"""
+    """
+    Fonction objectif pour Optuna (Classification).
+    Optuna va essayer différentes combinaisons d'hyperparamètres (learning_rate, num_leaves, etc.)
+    pour maximiser le score F1 (moyenne pondérée) sur l'ensemble de validation.
+    """
     params = {
         'objective': 'multiclass',
         'num_class': 3,
         'metric': 'multi_logloss',
         'verbosity': -1,
         'boosting_type': 'gbdt',
-        'class_weight': 'balanced',
+        'class_weight': 'balanced', # Gère le déséquilibre des classes (ex: peu de krachs)
         'n_jobs': -1,
         'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.3),
         'num_leaves': trial.suggest_int('num_leaves', 20, 150),
@@ -83,7 +100,10 @@ def objective_clf(trial, X_train, y_train, X_val, y_val):
     return f1_score(y_val, preds, average='weighted')
 
 def objective_reg(trial, X_train, y_train, X_val, y_val):
-    """Objectif Optuna pour la RÉGRESSION"""
+    """
+    Fonction objectif pour Optuna (Régression).
+    Cherche à minimiser l'erreur quadratique moyenne (RMSE) sur la prédiction du Log Return.
+    """
     params = {
         'objective': 'regression',
         'metric': 'rmse',
@@ -104,7 +124,7 @@ def objective_reg(trial, X_train, y_train, X_val, y_val):
     model = lgb.LGBMRegressor(**params)
     model.fit(X_train, y_train, eval_set=[(X_val, y_val)], eval_metric='rmse', callbacks=callbacks)
     preds = model.predict(X_val)
-    # On retourne le négatif du RMSE car Optuna maximise
+    # On retourne le négatif du RMSE car Optuna maximise la fonction objectif
     rmse = np.sqrt(np.mean((y_val - preds)**2))
     return -rmse
 

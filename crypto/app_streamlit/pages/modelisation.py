@@ -362,6 +362,19 @@ def render():
     with tabs[0]:
         st.header("4.1 Estimation & direction")
         st.info("🎯 **Mission :** Assister la décision de trading à court terme")
+        
+        with st.expander("ℹ️ Comment lire cette page ?"):
+            st.markdown("""
+            Cette page affiche les prédictions du modèle de Machine Learning pour les **4 prochaines heures**.
+            
+            - **Régression (Prix)** : Le modèle tente de deviner le prix exact à la clôture de la bougie H4.
+            - **Classification (Direction)** : Le modèle classe le mouvement futur en 3 catégories :
+                - 📉 **Baisse** : Le prix va baisser de plus de 0.15%.
+                - ➡️ **Stable** : Le prix va varier entre -0.15% et +0.15%.
+                - 📈 **Hausse** : Le prix va monter de plus de 0.15%.
+            
+            **Synthèse & Signal** : Combine les deux modèles pour donner un conseil (Achat/Vente/Neutre).
+            """)
 
         # Sélecteur de crypto en haut
         symbols = list_symbols()
@@ -552,6 +565,19 @@ def render():
     with tabs[1]:
         st.header("4.2 Aperçu des valeurs 🧪")
         st.info("💡 **Objectif :** Transformer les **bougies brutes** en **variables explicatives** pour comprendre les tendances. ➡️")
+        
+        with st.expander("ℹ️ Comprendre les Features (Variables)"):
+            st.markdown("""
+            Le modèle ne regarde pas juste le prix, il analyse plusieurs indicateurs :
+            
+            - **Log Return** : La performance de la bougie (en %).
+            - **Lags** : Les performances passées (il y a 1h, 2h, etc.).
+            - **RSI** : Indicateur de surachat/survente (0-100).
+            - **MACD** : Indicateur de tendance et de momentum.
+            - **ATR** : Mesure de la volatilité (plus c'est haut, plus ça bouge).
+            - **Dist SMA** : Distance du prix par rapport à ses moyennes mobiles (24h et 72h).
+            - **ADX** : Force de la tendance (0 = pas de tendance, 100 = tendance très forte).
+            """)
 
         st.write("---")
 
@@ -685,6 +711,18 @@ def render():
             Méthode : comparaison au naïf « persistance » (prix(t + 4h) ≈ close(t)).
             """
         )
+        
+        with st.expander("ℹ️ Comprendre l'Évaluation"):
+            st.markdown("""
+            Ici, on vérifie si le modèle est performant sur le passé récent.
+            
+            - **MAE (Mean Absolute Error)** : Erreur moyenne en dollars. Plus c'est bas, mieux c'est.
+            - **RMSE (Root Mean Squared Error)** : Punit davantage les grosses erreurs.
+            - **Baseline (Persistance)** : Une stratégie bête qui dit "Le prix dans 4h sera le même qu'aujourd'hui".
+            
+            Si le modèle a une erreur plus faible que la Baseline (Δ positif), c'est qu'il apporte de la valeur.
+            """)
+
         symbols = list_symbols()
         if not symbols:
             st.info("Base indisponible ou aucun symbole actif.")
@@ -746,6 +784,21 @@ def render():
 
         st.markdown("---")
         st.subheader("Backtest classification – stratégie Buy/Hold/Sell vs Buy&Hold")
+        
+        with st.expander("ℹ️ Comment fonctionne le Backtest ?"):
+            st.markdown("""
+            Le Backtest simule ce qui se serait passé si on avait suivi les conseils du modèle sur la période choisie.
+            
+            **Paramètres Clés :**
+            - **Seuils de Confiance** : À quel point le modèle doit être sûr de lui pour agir ? (ex: 0.60 = 60% de certitude).
+            - **Filtre ADX** : On évite de trader quand le marché est plat (ADX faible).
+            - **Type de Trading** :
+                - 🛡️ **Spot** : On achète pour revendre plus cher. Si ça baisse, on vend pour revenir en Cash (USDT). On ne peut pas perdre plus que ce qu'on a investi.
+                - ⚔️ **Futures** : On peut parier sur la baisse (Short). Si le prix chute, on gagne de l'argent. Mais c'est plus risqué.
+            - **Régime de Marché** :
+                - 🤖 **Auto-Adaptive** : Le système détecte tout seul si on est en Bull (Hausse) ou Bear (Baisse) market et adapte sa prudence.
+            """)
+
         md_justify(
             """
             Méthode de démo : on applique le classificateur sur la fenêtre choisie,
