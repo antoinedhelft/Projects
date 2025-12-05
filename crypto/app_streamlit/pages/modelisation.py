@@ -777,13 +777,15 @@ def render():
             st.caption("🌍 Régime de Marché")
             market_regime = st.radio(
                 "Sélectionnez le régime de marché",
-                ["Neutre (ML pur)", "Bull Market 📈", "Bear Market 📉"],
+                ["Auto-Adaptive 🤖", "Neutre (ML pur)", "Bull Market 📈", "Bear Market 📉"],
                 index=0,
                 horizontal=True,
                 help="Adapte la stratégie au contexte de marché actuel"
             )
             
-            if market_regime == "Bull Market 📈":
+            if market_regime == "Auto-Adaptive 🤖":
+                st.info("🤖 **Mode Auto**: Bascule automatiquement entre Bull et Bear selon la tendance (SMA 24/72).")
+            elif market_regime == "Bull Market 📈":
                 st.info("📈 **Mode Bull**: Agressif à l'achat, prudent à la vente. On garde les positions plus longtemps.")
             elif market_regime == "Bear Market 📉":
                 st.info("📉 **Mode Bear**: Prudent à l'achat, agressif à la vente. On protège le capital.")
@@ -923,7 +925,12 @@ def render():
                             else:
                                 is_uptrend = sma_cross_vals[i] > 0
                                 
-                                if market_regime == "Bull Market 📈":
+                                # Détermination des seuils dynamiques pour le mode Auto
+                                current_regime = market_regime
+                                if market_regime == "Auto-Adaptive 🤖":
+                                    current_regime = "Bull Market 📈" if is_uptrend else "Bear Market 📉"
+                                
+                                if current_regime == "Bull Market 📈":
                                     # MODE BULL : Agressif à l'achat, prudent à la vente
                                     # On achète plus facilement (seuil bas)
                                     # On vend uniquement sur signal fort
@@ -937,7 +944,7 @@ def render():
                                         new_signal = 'Sell'
                                     # Sinon on garde (Hold ou position actuelle)
                                     
-                                elif market_regime == "Bear Market 📉":
+                                elif current_regime == "Bear Market 📉":
                                     # MODE BEAR : Prudent à l'achat, agressif à la vente
                                     # On n'achète que si tendance + signal fort
                                     # On vend facilement
@@ -946,8 +953,9 @@ def render():
                                     
                                     if is_uptrend and p[2] >= bear_buy_threshold:
                                         new_signal = 'Buy'
-                                    elif p[0] >= bear_sell_threshold or not is_uptrend:
-                                        # Vendre sur signal OU tendance baisse
+                                    elif p[0] >= bear_sell_threshold:
+                                        # Vendre sur signal ML (on a retiré la vente forcée sur tendance baisse)
+                                        # Cela permet de "laisser courir" un rebond technique
                                         new_signal = 'Sell'
                                         
                                 else:
