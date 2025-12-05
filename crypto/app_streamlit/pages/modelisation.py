@@ -453,6 +453,7 @@ def render():
                         pred_label = code_to_label.get(pred_idx, str(pred_idx))
                         st.metric("Classe prédite (t+4h)", pred_label)
 
+                        probs_dict = {}
                         if hasattr(clf_model, "predict_proba"):
                             proba = clf_model.predict_proba(Xc)[0]
                             labels = []
@@ -467,9 +468,62 @@ def render():
                                 probs = [float(proba[i]) if i < len(proba) else 0.0 for i in range(3)]
                             st.caption("Probabilités de classe (%):")
                             for lbl, p in zip(labels, probs):
+                                probs_dict[lbl] = p * 100
                                 st.progress(min(max(int(round(p * 100)), 0), 100), text=f"{lbl} – {p*100:.1f}%")
 
-                st.caption("Classes réelles: 0=Baisse, 1=Stable, 2=Hausse")
+            # --- SYNTHÈSE / SIGNAL ---
+            st.markdown("---")
+            st.subheader("💡 Synthèse & Signal")
+            
+            # Récupération des valeurs calculées ci-dessus
+            final_signal = "NEUTRE"
+            final_color = "gray"
+            explanation = "Signaux contradictoires ou insuffisants."
+            
+            # On suppose que pct_delta et pred_label sont définis si tout s'est bien passé
+            current_pct = locals().get('pct_delta', 0.0)
+            current_lbl = locals().get('pred_label', 'Stable')
+            current_probs = locals().get('probs_dict', {})
+            
+            # Logique de décision
+            p_up = current_probs.get("Hausse", 0)
+            p_down = current_probs.get("Baisse", 0)
+            
+            if current_pct > 0.15:
+                if current_lbl == "Hausse":
+                    final_signal = "ACHAT FORT 🚀"
+                    final_color = "green"
+                    explanation = "Régression et Classification sont d'accord pour une hausse."
+                elif p_up > p_down + 10: # Biais haussier même si classé Stable
+                    final_signal = "ACHAT (Modéré) ↗️"
+                    final_color = "lightgreen"
+                    explanation = "Tendance haussière détectée, mais volatilité attendue faible."
+                else:
+                    explanation = "Régression positive mais Classification incertaine."
+            
+            elif current_pct < -0.15:
+                if current_lbl == "Baisse":
+                    final_signal = "VENTE FORTE 📉"
+                    final_color = "red"
+                    explanation = "Régression et Classification sont d'accord pour une baisse."
+                elif p_down > p_up + 10:
+                    final_signal = "VENTE (Modérée) ↘️"
+                    final_color = "#ffcccb"
+                    explanation = "Tendance baissière détectée, mais volatilité attendue faible."
+                else:
+                    explanation = "Régression négative mais Classification incertaine."
+            
+            st.markdown(
+                f"""
+                <div style="padding: 15px; border-radius: 10px; border: 1px solid {final_color}; background-color: rgba(0,0,0,0.1);">
+                    <h3 style="color: {final_color}; margin:0;">{final_signal}</h3>
+                    <p style="margin-top:5px;">{explanation}</p>
+                </div>
+                """, 
+                unsafe_allow_html=True
+            )
+
+            st.caption("Classes réelles: 0=Baisse, 1=Stable, 2=Hausse")
         except Exception as e:
             st.error(f"Prédiction indisponible: {e}")
 
@@ -869,10 +923,6 @@ def render():
                             else:
                                 is_uptrend = sma_cross_vals[i] > 0
                                 
-                                # Gestion compatibilité binaire/multiclasse
-                                proba_buy = p[2] if len(p) > 2 else 0.0
-                                proba_sell = p[0]
-                                
                                 if market_regime == "Bull Market 📈":
                                     # MODE BULL : Agressif à l'achat, prudent à la vente
                                     # On achète plus facilement (seuil bas)
@@ -880,9 +930,9 @@ def render():
                                     bull_buy_threshold = threshold_buy * 0.85  # -15% sur le seuil
                                     bull_sell_threshold = threshold_sell * 1.20  # +20% sur le seuil
                                     
-                                    if proba_buy >= bull_buy_threshold:
+                                    if p[2] >= bull_buy_threshold:
                                         new_signal = 'Buy'
-                                    elif proba_sell >= bull_sell_threshold and not is_uptrend:
+                                    elif p[0] >= bull_sell_threshold and not is_uptrend:
                                         # Vendre seulement si signal fort ET tendance baisse
                                         new_signal = 'Sell'
                                     # Sinon on garde (Hold ou position actuelle)
@@ -894,17 +944,17 @@ def render():
                                     bear_buy_threshold = threshold_buy * 1.15  # +15% sur le seuil
                                     bear_sell_threshold = threshold_sell * 0.80  # -20% sur le seuil
                                     
-                                    if is_uptrend and proba_buy >= bear_buy_threshold:
+                                    if is_uptrend and p[2] >= bear_buy_threshold:
                                         new_signal = 'Buy'
-                                    elif proba_sell >= bear_sell_threshold or not is_uptrend:
+                                    elif p[0] >= bear_sell_threshold or not is_uptrend:
                                         # Vendre sur signal OU tendance baisse
                                         new_signal = 'Sell'
                                         
                                 else:
                                     # MODE NEUTRE : ML pur, équilibré
-                                    if proba_buy >= threshold_buy:
+                                    if p[2] >= threshold_buy:
                                         new_signal = 'Buy'
-                                    elif proba_sell >= threshold_sell:
+                                    elif p[0] >= threshold_sell:
                                         new_signal = 'Sell'
                             
                             # Mise à jour de la position et du compteur

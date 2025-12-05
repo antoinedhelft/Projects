@@ -38,7 +38,7 @@ def prepare_targets(df, horizon_hours=4):
     - Classification: 0 (Baisse), 1 (Stable), 2 (Hausse)
     - Régression: Log Return (pour prédire le prix exact)
     """
-    threshold = 0.002 # 0.2%
+    threshold = 0.0015 # 0.15% (Resserré pour réduire la classe 'Stable')
     
     future_close = df['close_price'].shift(-horizon_hours)
     
