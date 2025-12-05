@@ -953,9 +953,8 @@ def render():
                                     
                                     if is_uptrend and p[2] >= bear_buy_threshold:
                                         new_signal = 'Buy'
-                                    elif p[0] >= bear_sell_threshold:
-                                        # Vendre sur signal ML (on a retiré la vente forcée sur tendance baisse)
-                                        # Cela permet de "laisser courir" un rebond technique
+                                    elif p[0] >= bear_sell_threshold or not is_uptrend:
+                                        # Vendre sur signal OU si la tendance est baissière (Protection Capital)
                                         new_signal = 'Sell'
                                         
                                 else:
