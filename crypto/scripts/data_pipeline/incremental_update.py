@@ -9,6 +9,7 @@ from db_utils import SessionLocal, init_db, engine
 from models import Pair, Candlestick as Candle, Exchange, Crypto  
 
 
+# On ne conserve que le top 3 des paires cryptos avec au moins 4 ans d'historique.
 YEARS = 4
 TOP_N = 3
 INTERVAL = Client.KLINE_INTERVAL_1HOUR
@@ -18,8 +19,7 @@ STABLES = {"USDT","USDC","BUSD","DAI","TUSD","PAX","USDP","FDUSD","GUSD","USDE"}
 # Configuration du client Binance pour utiliser l'API US si nécessaire ou désactiver la vérification
 # GitHub Actions utilise des IPs US qui sont bloquées par Binance.com
 # Solution : Utiliser tld='us' pour utiliser binance.us (si les paires existent) ou gérer l'erreur.
-# Pour ce projet, on va tenter d'utiliser l'API publique sans authentification qui est parfois moins restrictive,
-# ou configurer le client pour binance.us si on est aux US.
+# Pour ce projet, on utilise l'API publique sans authentification qui est parfois moins restrictive,
 
 import os
 tld = 'com'
@@ -145,39 +145,6 @@ def has_four_years_history_cached(db: Session, pair_id: int, symbol: str):
         return False
     return eo <= required_date
 
-def fetch_full_history(symbol: str, years=YEARS):
-    end = datetime.now(timezone.utc)
-    start = end - timedelta(days=years*365)
-    cur = start
-    parts = []
-    log(f"{symbol}: full fetch {years}y")
-    while cur < end:
-        nxt = (cur.replace(day=1)+timedelta(days=32)).replace(day=1)
-        if nxt > end: nxt = end
-        try:
-            kl = client.get_historical_klines(
-                symbol, INTERVAL,
-                cur.strftime("%d %b %Y %H:%M:%S"),
-                nxt.strftime("%d %b %Y %H:%M:%S")
-            )
-            if kl:
-                dfm = pd.DataFrame(kl, columns=[
-                    'open_time','open','high','low','close','volume',
-                    'close_time','quote_asset_volume','number_of_trades',
-                    'taker_buy_base_asset_volume','taker_buy_quote_asset_volume','ignore'
-                ])
-                parts.append(dfm)
-                log(f"{symbol} {cur.strftime('%Y-%m')} {len(dfm)}")
-        except Exception as e:
-            log(f"{symbol} erreur {cur.strftime('%Y-%m')}: {e}")
-        cur = nxt
-        time.sleep(0.1)
-    if not parts:
-        return None
-    df = pd.concat(parts, ignore_index=True)
-    df.drop_duplicates(subset=['open_time'], inplace=True)
-    return df
-
 def fetch_range(symbol: str, start_dt: datetime, end_dt: datetime):
     """Récupère les klines [start_dt, end_dt] par segments mensuels pour éviter les timeouts."""
     cur = start_dt
@@ -262,7 +229,7 @@ def run_incremental_cycle():
         exch_id = ensure_exchange_and_quote(db)
         
         # 1) Récupérer toutes les paires existantes (actives) pour les maintenir à jour
-        # On veut continuer de mettre à jour TOUT ce qu'on a déjà en base.
+        # On continue de mettre à jour TOUT ce qu'on a déjà en base.
         existing_pairs = db.execute(select(Pair).where(Pair.exchange_id==exch_id, Pair.is_active==True)).scalars().all()
         existing_symbols = {p.symbol for p in existing_pairs}
         log(f"Paires existantes à maintenir: {existing_symbols}")
