@@ -772,6 +772,15 @@ def render():
             
             adx_min = st.slider("Filtre ADX Min", 0, 50, 20, help="Si ADX < seuil, on ne trade pas (marché plat).")
             
+            # === Type de Trading ===
+            st.caption("Type de Trading")
+            trading_mode = st.radio(
+                "Mode de simulation",
+                ["Spot (Long Only) 🛡️", "Futures (Long/Short) ⚔️"],
+                index=0,
+                help="Spot: Vente = Cash (on protège). Futures: Vente = Short (on gagne sur la baisse)."
+            )
+
             # === Régime de Marché ===
             st.markdown("---")
             st.caption("🌍 Régime de Marché")
@@ -973,14 +982,17 @@ def render():
                                     lowest_since_entry = None
                                 current_pos = 1
                             elif new_signal == 'Sell':
-                                if current_pos != -1: # Changement de position
+                                # Logique Spot vs Futures
+                                target_pos = -1 if "Futures" in trading_mode else 0
+                                
+                                if current_pos != target_pos: # Changement de position
                                     hold_counter = MIN_HOLD_PERIOD
-                                    entry_price = current_price  # Enregistrer le prix d'entrée
-                                    lowest_since_entry = current_price
+                                    entry_price = current_price if target_pos == -1 else None
+                                    lowest_since_entry = current_price if target_pos == -1 else None
                                     highest_since_entry = None
-                                current_pos = -1
+                                current_pos = target_pos
                             else:
-                                # Sortie de position
+                                # Sortie de position (Hold/Cash)
                                 if current_pos != 0:
                                     entry_price = None
                                     highest_since_entry = None
@@ -998,7 +1010,11 @@ def render():
                     # Construire positions -1/0/+1 et calculer equity
                     price = dff["close_price"].reset_index(drop=True)
                     ts = dff["timestamp"].reset_index(drop=True)
-                    pos = pd.Series(signals).map({'Sell': -1, 'Hold': 0, 'Buy': 1}).astype(int)
+                    
+                    # Mapping dynamique selon le mode choisi
+                    sell_val = -1 if "Futures" in trading_mode else 0
+                    pos = pd.Series(signals).map({'Sell': sell_val, 'Hold': 0, 'Buy': 1}).astype(int)
+                    
                     pos_expo = pos.shift(1).fillna(0)
                     ret = price.pct_change().fillna(0)
                     # Frais: calculés aux changements de position (1 trade pour entrer/sortir, 2 pour flip)
