@@ -260,39 +260,64 @@ def run_incremental_cycle():
 
     with SessionLocal() as db:
         exch_id = ensure_exchange_and_quote(db)
-        # 1) Récupérer un pool de candidats plus large que TOP_N
+        
+        # 1) Récupérer toutes les paires existantes (actives) pour les maintenir à jour
+        # On veut continuer de mettre à jour TOUT ce qu'on a déjà en base.
+        existing_pairs = db.execute(select(Pair).where(Pair.exchange_id==exch_id, Pair.is_active==True)).scalars().all()
+        existing_symbols = {p.symbol for p in existing_pairs}
+        log(f"Paires existantes à maintenir: {existing_symbols}")
+
+        # 2) Identifier le TOP_N actuel (Volume + 4 ans d'historique)
+        # On veut s'assurer que les "stars" du moment sont bien suivies, même si elles n'étaient pas là avant.
         candidate_pool = get_top_symbols(limit=50)
-        log(f"Candidats (max 50): {candidate_pool[:10]}...")
-
-        # 2) Sélectionner au plus TOP_N symboles en respectant la contrainte 4 ans pour les nouveaux
-        selected: list[str] = []
+        top_qualified = []
         failures = 0
+        
+        required_date = datetime.now(timezone.utc) - timedelta(days=YEARS*365)
+
         for symbol in candidate_pool:
-            if len(selected) >= TOP_N or failures >= 5:
+            if len(top_qualified) >= TOP_N or failures >= 10:
                 break
-
-            # Pair déjà existante ? → on l'accepte directement, on fera l'incrémental
-            pair_row = db.execute(select(Pair).where(Pair.exchange_id==exch_id, Pair.symbol==symbol)).scalar_one_or_none()
-            if pair_row:
-                selected.append(symbol)
-                continue
-
-            # Nouvelle paire: vérifier qu'au moins 4 ans sont disponibles (côté API)
-            required_date = datetime.now(timezone.utc) - timedelta(days=YEARS*365)
-            eo = earliest_open_api(symbol)
-            if eo is None or eo > required_date:
+            
+            # Vérification 4 ans
+            # Si déjà en base, on regarde ce qu'on a. Sinon on demande à l'API.
+            pair_in_db = db.execute(select(Pair).where(Pair.exchange_id==exch_id, Pair.symbol==symbol)).scalar_one_or_none()
+            
+            is_qualified = False
+            if pair_in_db:
+                # On vérifie si on a déjà 4 ans de données en base OU si l'API dit qu'on peut les avoir
+                if has_four_years_history_cached(db, pair_in_db.id, symbol):
+                    is_qualified = True
+                else:
+                    # Peut-être qu'on a juste pas encore tout téléchargé, on vérifie l'API
+                    eo = earliest_open_api(symbol)
+                    if eo and eo <= required_date:
+                        is_qualified = True
+            else:
+                # Pas en base, check API
+                eo = earliest_open_api(symbol)
+                if eo and eo <= required_date:
+                    is_qualified = True
+            
+            if is_qualified:
+                top_qualified.append(symbol)
+            else:
                 failures += 1
-                log(f"{symbol}: ignorée (pas 4 ans). Echecs={failures}")
-                continue
-            selected.append(symbol)
+                # log(f"{symbol}: ignorée pour le Top {TOP_N} (pas 4 ans).")
 
-        log(f"Sélection finale (TOP {TOP_N} avec contrainte 4 ans pour nouvelles): {selected}")
+        log(f"Top {TOP_N} qualifié (Volume + 4 ans): {top_qualified}")
 
-        # 3) Traiter uniquement ces symboles (nouveaux → full 4y; existants → incrémental)
-        for symbol in selected:
+        # 3) Liste finale = Union (Existants + Top Qualifiés)
+        final_list = existing_symbols.union(set(top_qualified))
+        log(f"Liste finale à traiter ({len(final_list)} symboles): {final_list}")
+
+        # 4) Traitement (Mise à jour ou Création)
+        for symbol in final_list:
             pair_row = db.execute(select(Pair).where(Pair.exchange_id==exch_id, Pair.symbol==symbol)).scalar_one_or_none()
+            
             if not pair_row:
-                # Créer la paire et backfill 4 ans
+                # Cas: Nouveau Top 3 qui n'était pas en base
+                log(f"Nouveau symbole détecté (Top {TOP_N}): {symbol}")
                 pair_id = ensure_pair(db, exch_id, symbol)
                 start_dt = datetime.now(timezone.utc) - timedelta(days=YEARS*365)
                 df_full = fetch_range(symbol, start_dt, datetime.now(timezone.utc))
@@ -300,43 +325,46 @@ def run_incremental_cycle():
                 if candles:
                     db.bulk_save_objects(candles)
                     db.commit()
-                    log(f"{symbol}: initial {len(candles)} bougies (4 ans).")
+                    log(f"{symbol}: initialisation terminée ({len(candles)} bougies).")
                 else:
-                    log(f"{symbol}: aucun historique récupéré malgré éligibilité. A vérifier.")
+                    log(f"{symbol}: échec récupération historique.")
                 continue
 
-            # Incrémental
+            # Cas: Existant (Top 3 ou Ancienne paire) -> Incrémental
             pair_id = pair_row.id
             last_open = get_last_open_datetime(db, pair_id)
+            
             if last_open:
                 next_needed = last_open + timedelta(hours=1)
                 now_utc = datetime.now(timezone.utc)
-                if next_needed.tzinfo is not None:
-                    if next_needed > now_utc - timedelta(hours=1):
-                        log(f"{symbol}: à jour.")
-                        continue
-                else:
-                    if next_needed > now_utc.replace(tzinfo=None) - timedelta(hours=1):
-                        log(f"{symbol}: à jour.")
-                        continue
+                
+                # Gestion timezone naive vs aware
+                if next_needed.tzinfo is None:
+                    next_needed = next_needed.replace(tzinfo=timezone.utc)
+                
+                if next_needed > now_utc - timedelta(hours=1):
+                    log(f"{symbol}: à jour.")
+                    continue
+                
                 start_ms = int(next_needed.timestamp()*1000)
                 df_inc = fetch_incremental(symbol, start_ms)
                 candles = df_to_candles(df_inc, pair_id)
                 if candles:
                     db.bulk_save_objects(candles)
                     db.commit()
-                    log(f"{symbol}: +{len(candles)} incrément.")
+                    log(f"{symbol}: mise à jour (+{len(candles)} bougies).")
                 else:
-                    log(f"{symbol}: aucune nouvelle bougie.")
+                    log(f"{symbol}: aucune nouvelle bougie trouvée.")
             else:
-                # Paire existante sans données → backfill 4 ans
+                # Paire existante mais vide (Rattrapage)
+                log(f"{symbol}: existant mais vide -> Rattrapage 4 ans.")
                 start_dt = datetime.now(timezone.utc) - timedelta(days=YEARS*365)
                 df_full = fetch_range(symbol, start_dt, datetime.now(timezone.utc))
                 candles = df_to_candles(df_full, pair_id)
                 if candles:
                     db.bulk_save_objects(candles)
                     db.commit()
-                    log(f"{symbol}: (rattrapage) {len(candles)} bougies (4 ans).")
+                    log(f"{symbol}: rattrapage terminé ({len(candles)} bougies).")
 
 def main():
     run_incremental_cycle()
