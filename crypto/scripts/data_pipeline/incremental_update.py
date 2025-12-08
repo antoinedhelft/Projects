@@ -40,11 +40,20 @@ LOG_DIR = PROJECT_ROOT / "logs"
 LOG_DIR.mkdir(exist_ok=True)
 
 def log(msg: str):
+    """Affiche un message avec un timestamp dans la console."""
     print(f"[{datetime.now().isoformat()}] {msg}")
 
 def get_top_symbols(limit=TOP_N):
-    """Retourne les 'limit' paires USDT triées par volume, filtrées sur spot TRADING et hors stablecoins.
-    Utilise exchangeInfo pour éviter les symboles invalides. Retour: filtre simple par suffixe USDT.
+    """
+    Récupère les paires USDT les plus échangées sur Binance.
+    
+    Filtres appliqués :
+    - Statut TRADING (actif)
+    - Quote Asset = USDT
+    - Spot Trading autorisé
+    - Base Asset n'est pas un Stablecoin (ex: USDC, BUSD...)
+    
+    Retourne : Liste de symboles (ex: ['BTCUSDT', 'ETHUSDT', ...]) triée par volume décroissant.
     """
     try:
         info = client.get_exchange_info()
@@ -83,6 +92,10 @@ def get_top_symbols(limit=TOP_N):
     return selected
 
 def ensure_exchange_and_quote(db: Session):
+    """
+    Vérifie et crée si nécessaire l'Exchange 'Binance' et la Crypto de cotation 'USDT' dans la base de données.
+    Retourne l'ID de l'exchange Binance.
+    """
     exch = db.execute(select(Exchange).where(Exchange.name=="Binance")).scalar_one_or_none()
     if not exch:
         exch = Exchange(name="Binance")
@@ -95,6 +108,11 @@ def ensure_exchange_and_quote(db: Session):
     return exch.id
 
 def ensure_pair(db: Session, exchange_id: int, symbol: str):
+    """
+    Vérifie et crée si nécessaire une paire de trading (ex: BTCUSDT) dans la base.
+    Crée aussi la crypto de base (ex: BTC) si elle n'existe pas.
+    Retourne l'ID de la paire.
+    """
     base_sym = symbol[:-4]
     base_crypto = db.execute(select(Crypto).where(Crypto.symbol==base_sym)).scalar_one_or_none()
     if not base_crypto:
@@ -118,7 +136,10 @@ def ensure_pair(db: Session, exchange_id: int, symbol: str):
     return pair.id
 
 def earliest_open_api(symbol: str):
-    """Retourne le timestamp (UTC) de la première bougie disponible pour le symbole, ou None si indisponible."""
+    """
+    Interroge l'API Binance pour trouver la date de la toute première bougie disponible pour ce symbole.
+    Utile pour savoir si une crypto a assez d'historique (ex: > 4 ans).
+    """
     try:
         kl = client.get_historical_klines(symbol, INTERVAL, "1 Jan 1900", limit=1)
         if not kl:
@@ -129,9 +150,12 @@ def earliest_open_api(symbol: str):
         return None
 
 def has_four_years_history_cached(db: Session, pair_id: int, symbol: str):
-    """Retourne True si on dispose d'au moins 4 ans d'historique pour la paire.
-    - Si la paire a déjà des bougies en base: compare MIN(open_datetime) à now-4ans.
-    - Si aucune bougie en base (nouvelle paire): interroge l'API pour connaître la première bougie.
+    """
+    Vérifie si on dispose d'au moins 4 ans d'historique pour la paire.
+    
+    Logique :
+    1. Regarde d'abord en base de données locale (si on a déjà téléchargé des données).
+    2. Si la base est vide pour cette paire, interroge l'API Binance pour connaître la date de création de la paire.
     """
     required_date = datetime.now(timezone.utc) - timedelta(days=YEARS*365)
     earliest_db = db.execute(
@@ -146,7 +170,11 @@ def has_four_years_history_cached(db: Session, pair_id: int, symbol: str):
     return eo <= required_date
 
 def fetch_range(symbol: str, start_dt: datetime, end_dt: datetime):
-    """Récupère les klines [start_dt, end_dt] par segments mensuels pour éviter les timeouts."""
+    """
+    Télécharge l'historique complet entre deux dates.
+    Découpe la requête en morceaux mensuels pour éviter les timeouts de l'API Binance.
+    Retourne un DataFrame Pandas avec les données brutes.
+    """
     cur = start_dt
     parts = []
     log(f"{symbol}: fetch range {start_dt.date()} -> {end_dt.date()}")
@@ -179,6 +207,10 @@ def fetch_range(symbol: str, start_dt: datetime, end_dt: datetime):
     return df
 
 def fetch_incremental(symbol: str, start_ms: int):
+    """
+    Télécharge uniquement les nouvelles bougies depuis un timestamp donné (start_ms).
+    Utilisé pour la mise à jour quotidienne (incremental update).
+    """
     try:
         kl = client.get_historical_klines(symbol, INTERVAL, str(start_ms))
         if not kl:
@@ -195,6 +227,10 @@ def fetch_incremental(symbol: str, start_ms: int):
         return None
 
 def df_to_candles(df, pair_id):
+    """
+    Convertit un DataFrame Pandas (format API Binance) en une liste d'objets ORM 'Candle'
+    prêts à être insérés dans la base de données PostgreSQL.
+    """
     if df is None or df.empty:
         return []
     df['open_datetime'] = pd.to_datetime(df['open_time'], unit='ms', utc=True)
@@ -218,11 +254,19 @@ def df_to_candles(df, pair_id):
     return rows
 
 def get_last_open_datetime(db: Session, pair_id: int):
+    """Récupère la date de la dernière bougie enregistrée en base pour une paire donnée."""
     return db.execute(
         select(func.max(Candle.open_datetime)).where(Candle.pair_id == pair_id)
     ).scalar_one_or_none()
 
 def run_incremental_cycle():
+    """
+    Fonction principale du script :
+    1. Identifie les paires à mettre à jour (Existantes + Top 3 du moment).
+    2. Pour chaque paire :
+       - Si nouvelle : Télécharge tout l'historique (4 ans).
+       - Si existante : Télécharge uniquement les bougies manquantes depuis la dernière mise à jour.
+    """
     init_db()
 
     with SessionLocal() as db:
