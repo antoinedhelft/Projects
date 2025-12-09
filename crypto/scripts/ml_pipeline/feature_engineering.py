@@ -2,10 +2,93 @@ import pandas as pd
 import numpy as np
 import ta
 
+# =============================================================================
+# CHOIX DE FEATURE ENGINEERING : Échelle logarithmique et normalisation
+# =============================================================================
+# Pourquoi utiliser des Log Returns et normaliser les features ?
+#
+# 1. STATIONNARITÉ (Log Returns) :
+#    - Problème : Bitcoin passe de 20k$ (2022) à 60k$ (2024)
+#    - Si on utilise le prix brut, le modèle apprend "60k = bullish, 20k = bearish"
+#    - En 2025, si BTC atteint 100k$, le modèle sera perdu (jamais vu ce prix)
+#    
+#    - Solution : Log Return = log(Prix_futur / Prix_actuel)
+#    - On prédit la VARIATION (±5% par exemple) et non le prix absolu
+#    - Le modèle devient indépendant de l'échelle de prix
+#    - Formule : log(P_t / P_t-1) ≈ (P_t - P_t-1) / P_t-1 (pour petites variations)
+#
+# 2. DISTRIBUTION GAUSSIENNE (Log Returns) :
+#    - Les prix bruts suivent une distribution log-normale (asymétrique)
+#    - Les log returns suivent une distribution proche de la normale (symétrique)
+#    - Les algorithmes ML (LightGBM) performent mieux sur des distributions normales
+#
+# 3. NORMALISATION DES FEATURES :
+#    - Problème : Bitcoin volume = 10M USDT/jour, Dogecoin = 100k USDT/jour
+#    - Sans normalisation, le modèle donne trop d'importance aux grandes valeurs
+#    
+#    - Solution : On normalise chaque feature par rapport à sa propre échelle :
+#      * RSI : Déjà entre 0-100 (natif)
+#      * MACD : Divisé par le prix actuel (MACD %)
+#      * ATR : Divisé par le prix actuel (ATR %)
+#      * Volume : Divisé par la moyenne mobile 24h (Volume relatif)
+#      * SMA Distance : (Prix - SMA) / Prix (Distance %)
+#
+# 4. GÉNÉRALISATION MULTI-CRYPTOS :
+#    - Un modèle entraîné sur BTC (60k$) peut prédire SOL (100$)
+#    - Les features normalisées sont comparables entre cryptos
+#    - Pas besoin d'un modèle par crypto (on pourrait unifier si besoin)
+#
+# 5. ROBUSTESSE AUX OUTLIERS :
+#    - Les variations en % (±10%) sont bornées
+#    - Les prix bruts peuvent avoir des spikes (flash crash : -50% en 1 minute)
+#    - Les log returns limitent l'impact des outliers extrêmes
+#
+# Alternatives rejetées :
+# - Prix bruts : Non stationnaire, dépendant de l'échelle
+# - Simple Returns (P_t - P_t-1) / P_t-1 : Asymétrique, pas de distribution gaussienne
+# - Z-score normalization : Sensible aux outliers, suppose une distribution stable
+# =============================================================================
+
 def build_features(df_raw: pd.DataFrame):
     """
     Génère des features basées sur des variations (pourcentages) et non des valeurs brutes.
     Cela rend le modèle 'stationnaire' et capable de généraliser sur différentes périodes de prix.
+    
+    Features générées (toutes normalisées) :
+    
+    1. MOMENTUM (Variations de prix) :
+       - log_return : Variation horaire en échelle log
+       - return_lag_1h à 5h : Mémoire des variations passées
+       - vol_relative_lag : Volume relatif (vs moyenne 24h)
+    
+    2. INDICATEURS TECHNIQUES (Normalisés) :
+       - rsi : Force relative (0-100, déjà normalisé)
+       - macd_diff_normalized : MACD / Prix (convergence/divergence en %)
+       - atr_pct : Volatilité / Prix (Average True Range en %)
+       - bb_pband : Position dans les Bandes de Bollinger (0-1)
+       - bb_width : Largeur des Bandes de Bollinger (volatilité)
+    
+    3. TENDANCES (Moyennes mobiles normalisées) :
+       - dist_sma_24h : Distance au SMA 24h en % (tendance court terme)
+       - dist_sma_168h : Distance au SMA 168h (1 semaine) en % (tendance long terme)
+       - sma_cross_24_72 : Écart entre SMA 24h et 72h (Golden/Death Cross)
+       - adx : Force de la tendance (0-1, normalisé)
+    
+    4. CYCLICITÉ TEMPORELLE :
+       - hour_sin/cos : Heure de la journée (continuité 23h → 0h)
+       - day_of_week : Jour de la semaine (0=Lundi, 6=Dimanche)
+    
+    Justification de chaque feature :
+    
+    - Lags (1h à 5h) : Capture la mémoire court terme du marché (momentum)
+    - RSI : Détecte les zones de surachat (>70) et survente (<30)
+    - MACD : Identifie les changements de tendance (croisements)
+    - ATR : Mesure la volatilité (risque de mouvement brusque)
+    - Bollinger Bands : Détecte les zones de contraction/expansion (breakout potentiel)
+    - SMA Distance : Indique si le prix est au-dessus (bullish) ou en-dessous (bearish) de la tendance
+    - SMA Cross : Détecte les Golden Cross (MM courte > MM longue = bullish) et Death Cross
+    - ADX : Filtre les faux signaux (si ADX < 20, la tendance est faible, ignorer les croisements)
+    - Hour/Day : Capture les patterns horaires (ex: volume plus élevé à 14h UTC = ouverture US)
     """
     
     df_raw['open_datetime'] = pd.to_datetime(df_raw['open_datetime'])

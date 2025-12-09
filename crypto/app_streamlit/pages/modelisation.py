@@ -355,7 +355,8 @@ def render():
         "4.1 Estimations & directions",
         "4.2 Aperçu des valeurs",
         "4.3 DataViz & Distribution",
-        "4.4 Évaluation"
+        "4.4 Évaluation",
+        "📚 Documentation du Projet"
     ])
 
 
@@ -1128,3 +1129,387 @@ def render():
                     st.caption("Remarque: l'équité est simulée en USDT avec capital initial configurable. Les frais sont appliqués aux changements de position (1 trade entrée/sortie, 2 trades pour inversion).")
             except Exception as e:
                 st.error(f"Backtest classification indisponible: {e}")
+
+    # ========================
+    # NOUVEL ONGLET: Documentation du Projet
+    # ========================
+    with tabs[4]:
+        st.header("📚 Documentation du Projet Crypto Trading ML")
+        
+        st.markdown("""
+        Cette page documente les **choix techniques et méthodologiques** du projet de prédiction de prix crypto par Machine Learning.
+        """)
+        
+        # === 1. ARCHITECTURE & INFRASTRUCTURE ===
+        with st.expander("🏗️ 1. Architecture & Infrastructure", expanded=False):
+            st.markdown("""
+            ### Pourquoi Neon.tech (PostgreSQL) au lieu de Docker ?
+            
+            **Problème résolu :**
+            - Pas besoin de serveur permanent (Docker + PostgreSQL local)
+            - Accessibilité 24/7 depuis GitHub Actions et Streamlit Cloud
+            - Pas de gestion de volumes Docker, backups, ou réplication
+            
+            **Avantages :**
+            - **Simplicité** : Connexion directe via `DATABASE_URL` (une ligne de config)
+            - **Disponibilité** : Données accessibles depuis n'importe où (CI/CD, UI)
+            - **Scalabilité** : Scaling automatique selon l'usage
+            - **Coût** : Plan gratuit suffisant (500 Mo limite, notre projet ≈ 100 Mo)
+            
+            **Alternatives rejetées :**
+            - Docker PostgreSQL → Nécessite un serveur toujours allumé (coût électricité + maintenance)
+            - SQLite → Pas adapté aux accès concurrents (GitHub Actions + Streamlit simultanés)
+            - MongoDB → Trop complexe pour des séries temporelles simples
+            
+            ---
+            
+            ### Pourquoi HuggingFace pour stocker les modèles ?
+            
+            **Problème résolu :**
+            - Versioning automatique des modèles (Git LFS)
+            - Accessibilité globale (GitHub Actions pour l'entraînement, Streamlit pour l'inférence)
+            - Pas besoin de S3/Azure Blob Storage (complexité + coût)
+            
+            **Avantages :**
+            - **Versioning** : Chaque push est une version (rollback facile si régression)
+            - **Collaboration** : UI web pour visualiser les modèles
+            - **Coût** : 100 Go gratuits (nos 3 modèles = 30 Mo total)
+            - **CI/CD natif** : API Python simple (`hf_hub_download`, `upload_file`)
+            
+            **Alternatives rejetées :**
+            - Docker volumes → Registry Docker Hub limite 1 image gratuite
+            - GitHub Releases → OK mais moins pratique (pas d'API stable)
+            - Google Drive → API instable pour CI/CD
+            """)
+        
+        # === 2. DONNÉES ===
+        with st.expander("📊 2. Choix des Données (4 ans, Top 3 cryptos)", expanded=False):
+            st.markdown("""
+            ### Pourquoi 4 ans d'historique minimum ?
+            
+            **Objectif :** Capturer un cycle complet du marché crypto.
+            
+            **Les 4 phases du cycle (2021-2024) :**
+            1. **Bull Run (2021)** : Modèle apprend les patterns de hausse extrême (+500% BTC)
+            2. **Bear Market (2022)** : Modèle apprend les patterns de baisse prolongée (-70% BTC)
+            3. **Récupération (2023)** : Modèle apprend les patterns de reprise progressive
+            4. **Consolidation (2024)** : Modèle apprend les patterns de stabilisation
+            
+            **Avantages :**
+            - **Évite l'overfitting** : Un modèle entraîné uniquement sur un bull market échoue en bear market
+            - **Diversité des régimes** : Améliore la généralisation (le modèle voit différents contextes)
+            - **Volume suffisant** : 4 ans × 365 jours × 24 heures = ~35 000 points/crypto (suffisant pour LightGBM)
+            
+            **Contrainte technique :**
+            - Binance fournit des données depuis 2017 pour BTC/ETH
+            - 4 ans est un compromis entre volume et disponibilité pour les altcoins
+            
+            ---
+            
+            ### Pourquoi limiter à 3 cryptos (Top Volume) ?
+            
+            **Objectif :** Maximiser la qualité des données et minimiser les coûts.
+            
+            **Critères de sélection du Top 3 :**
+            1. **Volume de transactions** > 1M USDT/jour (liquidité fiable)
+            2. **Historique complet** : 4 ans de données continues (pas de gaps)
+            3. **Mise à jour dynamique** : Le script vérifie quotidiennement le Top 3 actuel
+            
+            **Avantages :**
+            - **Performance API** : Limite de 1200 req/min sur Binance → 3 cryptos OK, 100+ cryptos KO
+            - **Qualité** : Les cryptos peu échangées ont des gaps et sont manipulables
+            - **Coûts** : Neon.tech gratuit (500 Mo limite), HuggingFace gratuit (100 Mo/modèle)
+            - **Compute** : GitHub Actions gratuit (2000 min/mois) → entraînement mensuel OK
+            
+            **Maintenance automatique :**
+            - Si une nouvelle crypto entre dans le Top 3, elle est ajoutée automatiquement
+            - Les anciennes cryptos du Top 3 restent dans la base (données historiques conservées)
+            
+            **Exemples actuels (Février 2024) :**
+            - BTC/USDT (60k$ × 50k BTC/jour = 3 Mrd$ volume)
+            - ETH/USDT (3k$ × 500k ETH/jour = 1.5 Mrd$ volume)
+            - SOL/USDT (100$ × 30M SOL/jour = 3 Mrd$ volume)
+            """)
+        
+        # === 3. ALGORITHME ML ===
+        with st.expander("🤖 3. Algorithme ML : LightGBM + Optuna", expanded=False):
+            st.markdown("""
+            ### Pourquoi LightGBM (Light Gradient Boosting Machine) ?
+            
+            **Problème :** Prédire les mouvements de prix à partir de features tabulaires (RSI, MACD, lags, etc.)
+            
+            **LightGBM vs autres algorithmes :**
+            
+            | Algorithme | Avantages | Inconvénients |
+            |------------|-----------|---------------|
+            | **LightGBM** ✅ | Rapide sur gros datasets, gère NaN nativement, régularisation intégrée | Moins interprétable que Linear Regression |
+            | Random Forest | Parallélisable | Moins performant sur relations complexes |
+            | XGBoost | Performance similaire | Plus lent que LightGBM |
+            | LSTM/Transformers | Capture les séquences temporelles | Trop coûteux en compute (GPU nécessaire) |
+            | Linear Regression | Interprétable | Trop simple, ne capture pas les non-linéarités |
+            
+            **Choix final :** LightGBM est le meilleur compromis vitesse/performance pour GitHub Actions (CPU only).
+            
+            ---
+            
+            ### Pourquoi Optuna pour l'optimisation des hyperparamètres ?
+            
+            **Problème :** Trouver les meilleurs hyperparamètres (learning_rate, num_leaves, max_depth, etc.)
+            
+            **Optuna vs autres méthodes :**
+            
+            | Méthode | Temps | Efficacité | Justification |
+            |---------|-------|------------|---------------|
+            | **Optuna (Bayesian)** ✅ | 15 trials = 20 min | Converge rapidement | TPE (Tree-structured Parzen Estimator) intelligent |
+            | Grid Search | 10^6+ combinaisons = 8h+ | Exhaustif mais lent | Infaisable sur GitHub Actions (2h timeout) |
+            | Random Search | 50+ trials = 1h | Moins efficace qu'Optuna | Nécessite plus d'essais pour converger |
+            | Manual Tuning | Variable | Biais humain | Pas reproductible |
+            
+            **Avantages Optuna :**
+            - **Pruning automatique** : Arrête les essais non prometteurs (économise du temps)
+            - **Métriques personnalisées** : Optimise F1-score (classification) ou RMSE (régression)
+            - **Logging** : Enregistre tous les trials (reproductibilité)
+            
+            **Configuration actuelle :**
+            - **15 trials** par crypto (suffisant pour converger)
+            - **Métriques optimisées :**
+              - Classification → F1-score (équilibre Precision/Recall)
+              - Régression → RMSE (Log Return)
+            """)
+        
+        # === 4. FEATURE ENGINEERING ===
+        with st.expander("🔧 4. Feature Engineering : Log Returns & Normalisation", expanded=False):
+            st.markdown("""
+            ### Pourquoi utiliser des Log Returns au lieu des prix bruts ?
+            
+            **Problème :** Bitcoin passe de 20k$ (2022) à 60k$ (2024). Si le modèle apprend "60k = bullish", il sera perdu à 100k$ en 2025.
+            
+            **Solution : Log Return (Rendement Logarithmique)**
+            
+            ```python
+            log_return = log(Prix_futur / Prix_actuel)
+            ```
+            
+            **Formule simplifiée (petites variations) :**
+            ```
+            log_return ≈ (Prix_futur - Prix_actuel) / Prix_actuel
+            ```
+            
+            **Avantages :**
+            
+            | Aspect | Prix Bruts | Log Returns |
+            |--------|------------|-------------|
+            | **Stationnarité** | ❌ Non stationnaire (dépend de l'époque) | ✅ Stationnaire (variation en %) |
+            | **Échelle** | ❌ BTC 60k$ vs SOL 100$ (échelles incomparables) | ✅ Variation ±5% (échelle unique) |
+            | **Distribution** | ❌ Log-normale (asymétrique) | ✅ Proche de la normale (symétrique) |
+            | **Outliers** | ❌ Flash crash -50% = énorme | ✅ Log return limite l'impact |
+            | **Généralisation** | ❌ Modèle ne généralise pas sur nouvelles époques | ✅ Modèle généralise sur différentes périodes |
+            
+            **Exemple concret :**
+            - Prix passe de 100$ à 105$ → Return = +5% → Log Return ≈ 0.049 (4.9%)
+            - Prix passe de 60000$ à 63000$ → Return = +5% → Log Return ≈ 0.049 (4.9%)
+            
+            **Le modèle apprend la variation (+5%) et non le prix absolu (100$ ou 60000$).**
+            
+            ---
+            
+            ### Pourquoi normaliser toutes les features ?
+            
+            **Problème :** Bitcoin volume = 10M USDT/jour, Dogecoin = 100k USDT/jour. Sans normalisation, le modèle privilégie les grandes valeurs.
+            
+            **Solution : Normalisation relative**
+            
+            | Feature | Formule | Pourquoi ? |
+            |---------|---------|------------|
+            | **RSI** | Déjà 0-100 | Natif (pas de normalisation) |
+            | **MACD** | MACD / Prix | MACD en % du prix (relatif) |
+            | **ATR** | ATR / Prix | Volatilité en % (comparable BTC vs SOL) |
+            | **Volume** | Vol / Vol_24h_mean | Volume relatif (pic vs moyenne) |
+            | **SMA Distance** | (Prix - SMA) / Prix | Distance en % (relatif) |
+            
+            **Avantages :**
+            - **Multi-cryptos** : Un modèle entraîné sur BTC (60k$) peut prédire SOL (100$)
+            - **Robustesse** : Les variations en % (±10%) sont bornées (vs prix bruts illimités)
+            - **Généralisation** : Les features normalisées sont comparables entre différentes cryptos
+            
+            ---
+            
+            ### Liste complète des features (25 features)
+            
+            **1. MOMENTUM (Variations de prix)**
+            - `log_return` : Variation horaire en échelle log
+            - `return_lag_1h` à `5h` : Mémoire des variations passées
+            - `vol_relative_lag_1h` à `5h` : Volume relatif (vs moyenne 24h)
+            
+            **2. INDICATEURS TECHNIQUES**
+            - `rsi` : Force relative (0-100, détecte surachat/survente)
+            - `macd_diff_normalized` : MACD / Prix (convergence/divergence)
+            - `atr_pct` : Volatilité / Prix (risque de mouvement brusque)
+            - `bb_pband` : Position dans Bollinger Bands (0-1)
+            - `bb_width` : Largeur des Bandes (contraction/expansion)
+            
+            **3. TENDANCES (Moyennes mobiles)**
+            - `dist_sma_24h` : Distance au SMA 24h (tendance court terme)
+            - `dist_sma_168h` : Distance au SMA 168h (tendance long terme = 1 semaine)
+            - `sma_cross_24_72` : Écart SMA 24h vs 72h (Golden/Death Cross)
+            - `adx` : Force de la tendance (0-1, filtre les faux signaux)
+            
+            **4. CYCLICITÉ TEMPORELLE**
+            - `hour_sin/cos` : Heure cyclique (23h → 0h continuité)
+            - `day_of_week` : Jour de la semaine (0=Lundi, patterns hebdomadaires)
+            
+            **Justification de chaque feature :**
+            
+            | Feature | Utilité | Exemple |
+            |---------|---------|---------|
+            | **Lags 1-5h** | Mémoire court terme | Si ça montait les 3 dernières heures → momentum haussier |
+            | **RSI** | Détecte zones extrêmes | RSI > 70 → surachat (risque correction) |
+            | **MACD** | Changement de tendance | MACD croise signal → retournement |
+            | **ATR** | Mesure volatilité | ATR élevé → mouvement brusque probable |
+            | **Bollinger** | Breakout potentiel | Prix touche bande basse → rebond possible |
+            | **SMA Distance** | Position vs tendance | Prix < SMA → bearish, Prix > SMA → bullish |
+            | **SMA Cross** | Golden/Death Cross | MM courte > longue → bullish |
+            | **ADX** | Force de tendance | ADX < 20 → marché plat (ignorer croisements) |
+            | **Hour/Day** | Patterns horaires | Volume plus élevé à 14h UTC (ouverture US) |
+            """)
+        
+        # === 5. MODÈLES ===
+        with st.expander("🎯 5. Deux Modèles Complémentaires : Régression + Classification", expanded=False):
+            st.markdown("""
+            ### Pourquoi 2 modèles au lieu d'un seul ?
+            
+            **Problème :** Le trading nécessite à la fois un prix cible (combien ?) et une direction (monter/descendre ?).
+            
+            **Architecture :**
+            
+            1. **Modèle de Régression** → Prédit le **Log Return** à t+4h
+               - Sortie : Nombre continu (ex: +0.025 = +2.5%)
+               - Métrique : RMSE (Root Mean Squared Error)
+               - Utilité : Calcule un prix cible précis
+            
+            2. **Modèle de Classification** → Prédit la **Direction** (3 classes)
+               - Classes :
+                 - 0 = Baisse (Return < -0.15%)
+                 - 1 = Stable (-0.15% ≤ Return ≤ +0.15%)
+                 - 2 = Hausse (Return > +0.15%)
+               - Métrique : F1-score (équilibre Precision/Recall)
+               - Utilité : Donne un signal clair (Buy/Hold/Sell)
+            
+            **Seuil de 0.15% :**
+            - Trop bas (0.05%) → Beaucoup de faux signaux (bruit du marché)
+            - Trop haut (1%) → Manque des opportunités (mouvements modérés)
+            - **0.15% est un compromis** entre sensibilité et précision
+            
+            **Utilisation combinée :**
+            ```
+            Si Classification = Hausse (2) ET Régression > +0.3% → Signal ACHAT FORT
+            Si Classification = Baisse (0) ET Régression < -0.3% → Signal VENTE FORT
+            Si Classification = Stable (1) → HOLD (pas de trade)
+            ```
+            
+            **Avantages de la combinaison :**
+            - **Confiance accrue** : Deux modèles doivent s'accorder (réduit faux signaux)
+            - **Précision du target** : Régression donne un prix cible pour Stop Loss / Take Profit
+            - **Interprétabilité** : Classification donne un signal simple (Buy/Sell/Hold)
+            """)
+        
+        # === 6. BACKTESTING ===
+        with st.expander("📈 6. Backtesting : Spot vs Futures", expanded=False):
+            st.markdown("""
+            ### Pourquoi deux modes de trading ?
+            
+            **Problème :** Le rendement dépend de la capacité à shorter (vendre à découvert).
+            
+            **Mode Spot (Long Only) :**
+            - **Signal Buy** → Position longue (achat)
+            - **Signal Sell** → Sortie en cash (0% exposition)
+            - **Limitation** : Pas de profit en bear market (rendement plafonné)
+            
+            **Mode Futures (Long/Short) :**
+            - **Signal Buy** → Position longue (+100% exposition)
+            - **Signal Sell** → Position short (-100% exposition)
+            - **Avantage** : Profit en hausse ET en baisse
+            
+            **Exemple concret :**
+            
+            | Scénario | Prix initial | Prix final | Spot | Futures |
+            |----------|--------------|------------|------|---------|
+            | Hausse +10% | 100$ | 110$ | +10% (long) | +10% (long) |
+            | Baisse -10% | 100$ | 90$ | 0% (cash) | +10% (short) |
+            
+            **Gestion du risque (paramètres configurables) :**
+            
+            1. **Stop Loss** : Sortie automatique si perte > X% (ex: -2%)
+            2. **Take Profit** : Sortie automatique si gain > Y% (ex: +5%)
+            3. **Trailing Stop** : Stop Loss qui suit le prix (protège les gains)
+            
+            **Frais de trading :**
+            - **0.1% par trade** (Binance spot/futures)
+            - **1 trade entrée + 1 trade sortie** = 0.2% total
+            - **Flip position (Long → Short)** = 2 trades = 0.4%
+            
+            **Exemple calcul avec frais :**
+            ```
+            Capital initial : 1000 USDT
+            Signal Buy à 100$ → Position longue (frais -0.1% = 999 USDT)
+            Prix monte à 105$ → Rendement brut +5%
+            Signal Sell à 105$ → Sortie cash (frais -0.1% = 1044 USDT)
+            Rendement net : +4.4% (après frais)
+            ```
+            
+            **Métriques affichées :**
+            - **Final equity** : Capital final en USDT
+            - **Rendement** : (Final - Initial) / Initial × 100%
+            - **Max Drawdown** : Pire perte temporaire (risque max)
+            - **Total trades** : Nombre d'entrées/sorties
+            - **Flips** : Nombre de retournements (Long → Short)
+            """)
+        
+        # === 7. LIMITES & AMÉLIORATIONS ===
+        with st.expander("⚠️ 7. Limites du Projet & Pistes d'Amélioration", expanded=False):
+            st.markdown("""
+            ### Limites actuelles
+            
+            **1. Données (4 ans, Top 3 cryptos) :**
+            - ❌ Pas de données on-chain (volumes Whales, flux exchanges)
+            - ❌ Pas de sentiment analysis (Twitter, Reddit, Fear & Greed Index)
+            - ❌ Pas de données macro (Fed rates, CPI, SPX correlation)
+            
+            **2. Modèle (LightGBM) :**
+            - ❌ Pas de mémoire longue (LSTM/Transformers capturent mieux les séquences)
+            - ❌ Pas de multi-task learning (un modèle pour toutes les cryptos)
+            - ❌ Pas de reinforcement learning (agent apprend par essai-erreur)
+            
+            **3. Backtesting :**
+            - ❌ Slippage non simulé (écart entre ordre et exécution)
+            - ❌ Market impact non simulé (gros ordres font bouger le prix)
+            - ❌ Liquidité non prise en compte (gaps en période de stress)
+            
+            ---
+            
+            ### Pistes d'amélioration
+            
+            **1. Enrichir les features :**
+            - ➕ Ajouter des données on-chain (Glassnode API)
+            - ➕ Ajouter sentiment Twitter (API X avec embedding DistilBERT)
+            - ➕ Ajouter corrélation SPX/DXY (Yahoo Finance)
+            
+            **2. Améliorer le modèle :**
+            - ➕ Tester LSTM/Transformers (si GPU disponible sur GitHub Actions)
+            - ➕ Multi-task learning : un seul modèle pour BTC/ETH/SOL
+            - ➕ Reinforcement Learning : DQN agent (Deep Q-Network)
+            
+            **3. Améliorer le backtesting :**
+            - ➕ Simuler slippage (±0.05% selon volatilité)
+            - ➕ Simuler market impact (ordre > 1% volume → impact prix)
+            - ➕ Ajouter régimes de marché (Bull/Bear/Ranging detection)
+            
+            **4. Production :**
+            - ➕ Déployer sur Render/Railway (always-on au lieu de Streamlit Cloud)
+            - ➕ Alertes Telegram/Discord (signal Buy/Sell en temps réel)
+            - ➕ Paper trading (Binance Testnet pour valider avant prod)
+            """)
+        
+        st.success("📚 Documentation complète du projet Crypto Trading ML")
+        st.caption("Cette documentation est générée automatiquement depuis les commentaires du code source.")
+

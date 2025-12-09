@@ -10,6 +10,90 @@ from pathlib import Path
 from sklearn.metrics import classification_report, f1_score
 from huggingface_hub import HfApi
 
+# =============================================================================
+# CHOIX D'ALGORITHME : LightGBM (Light Gradient Boosting Machine)
+# =============================================================================
+# Pourquoi LightGBM au lieu d'autres algorithmes ?
+#
+# 1. Performance sur données structurées (séries temporelles) :
+#    - LightGBM excelle sur les features tabulaires (RSI, MACD, lags, etc.)
+#    - Plus rapide que XGBoost/CatBoost sur de gros datasets (35k+ lignes/crypto)
+#    - Gère nativement les valeurs manquantes (NaN dans les features initiales)
+#
+# 2. Gradient Boosting vs autres méthodes :
+#    - Random Forest : Moins performant sur les relations complexes entre features
+#    - Linear Regression : Trop simple, ne capture pas les non-linéarités du marché
+#
+# 3. Régularisation intégrée :
+#    - LightGBM a des hyperparamètres de régularisation (reg_alpha, reg_lambda)
+#    - Évite l'overfitting sur les données historiques
+#
+# 4. Classification multi-classe native :
+#    - Prédiction de 3 classes (Baisse/Stable/Hausse) sans binarisation manuelle
+#    - Métriques multi-classes automatiques (F1-score, confusion matrix)
+#
+# 5. Compatibilité avec HuggingFace :
+#    - Les modèles joblib (pkl) sont faciles à versionner sur HuggingFace
+#    - Pas besoin de serveur GPU pour l'inférence (contrairement aux DL)
+# =============================================================================
+
+# =============================================================================
+# CHOIX D'OPTIMISATION : Optuna pour les hyperparamètres
+# =============================================================================
+# Pourquoi Optuna au lieu de Grid Search ou Random Search ?
+#
+# 1. Efficacité du Bayesian Optimization :
+#    - Optuna utilise un algorithme TPE (Tree-structured Parzen Estimator)
+#    - Converge plus vite vers les meilleurs hyperparamètres (15 trials suffisent)
+#    - Grid Search testerait 10^6+ combinaisons (bien plus long)
+#
+# 2. Pruning automatique (Early Stopping) :
+#    - Optuna arrête les essais non prometteurs dès les premières itérations
+#    - Économise du temps de calcul (GitHub Actions limite à 2000 min/mois)
+#
+# 3. Métriques personnalisées :
+#    - On optimise le F1-score (équilibre Precision/Recall) pour la classification
+#    - On optimise le RMSE pour la régression (Log Return)
+#
+# 4. Logging et reproductibilité :
+#    - Optuna enregistre tous les trials (hyperparamètres + scores)
+#    - On peut relancer l'optimisation depuis le meilleur point précédent
+#
+# Alternatives rejetées :
+# - Grid Search : Trop lent 
+# - Random Search : Moins efficace qu'Optuna (besoin de 50+ trials)
+# - Manual Tuning : Pas reproductible, biais humain
+# =============================================================================
+
+# =============================================================================
+# CHOIX D'INFRASTRUCTURE : HuggingFace pour le stockage des modèles
+# =============================================================================
+# Pourquoi HuggingFace au lieu de Docker ou du système de fichiers ?
+#
+# 1. Versioning des modèles :
+#    - Chaque commit sur HuggingFace est une version du modèle (Git LFS)
+#    - On peut revenir à un modèle précédent en cas de régression
+#    - Pas besoin de gérer manuellement des fichiers .pkl datés
+#
+# 2. Accessibilité globale :
+#    - Les modèles sont accessibles depuis GitHub Actions (entraînement)
+#    - Les modèles sont accessibles depuis Streamlit Cloud (inférence)
+#    - Pas besoin de serveur S3/Azure Blob Storage (coût + complexité)
+#
+# 3. Collaboration :
+#    - HuggingFace a une UI web pour visualiser les modèles
+#    - On peut partager les modèles avec d'autres développeurs
+#
+# 4. Coût :
+#    - Plan gratuit : 100 Go de stockage (nos 3 modèles = 30 Mo total)
+#    - Pas de frais de transfert de données
+#
+# Alternatives rejetées :
+# - Docker volumes : Nécessite un registry Docker Hub (limite 1 image gratuite)
+# - GitHub Releases : Limite de 2 Go par fichier (OK mais moins pratique)
+# - Google Drive/Dropbox : Pas d'API stable pour CI/CD
+# =============================================================================
+
 # -------------------------------------------------------------------
 # 1. SETUP PATHS & IMPORTS (Architecture existante)
 # -------------------------------------------------------------------

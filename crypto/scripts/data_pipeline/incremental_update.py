@@ -8,6 +8,87 @@ from sqlalchemy.orm import Session
 from db_utils import SessionLocal, init_db, engine  
 from models import Pair, Candlestick as Candle, Exchange, Crypto  
 
+# =============================================================================
+# CHOIX D'ARCHITECTURE : Stockage des données avec Neon.tech (PostgreSQL)
+# =============================================================================
+# Pourquoi Neon.tech au lieu de Docker + PostgreSQL local ?
+#
+# 1. Simplicité de déploiement :
+#    - Pas besoin de gérer un container Docker PostgreSQL
+#    - Pas de volumes Docker à maintenir
+#    - Connexion directe via une simple chaîne de connexion (DATABASE_URL)
+#
+# 2. Disponibilité 24/7 :
+#    - Les données sont accessibles depuis GitHub Actions (CI/CD)
+#    - Les données sont accessibles depuis Streamlit Cloud (UI en ligne)
+#    - Pas besoin de serveur personnel allumé en permanence
+#
+# 3. Scalabilité automatique :
+#    - Neon.tech gère automatiquement les backups
+#    - Scaling automatique selon l'usage (gratuit jusqu'à 500 Mo)
+#    - Pas de configuration manuelle de réplication ou de haute disponibilité
+#
+# 4. Coût :
+#    - Plan gratuit suffisant pour ce projet (données horaires depuis 4 ans ≈ 100 Mo)
+#    - Évite les coûts d'infrastructure (serveur, électricité, maintenance)
+#
+# Alternatives rejetées :
+# - Docker PostgreSQL : Nécessite un serveur permanent (coût + maintenance)
+# - SQLite : Pas adapté aux accès concurrents (GitHub Actions + Streamlit)
+# - MongoDB : Trop de complexité pour des séries temporelles simples
+# =============================================================================
+
+# =============================================================================
+# CHOIX DE DONNÉES : 4 ans d'historique
+# =============================================================================
+# Pourquoi 4 ans minimum ?
+#
+# 1. Cycle complet du marché crypto :
+#    - Bull Run (2021) : Modèle apprend les patterns de hausse extrême
+#    - Bear Market (2022) : Modèle apprend les patterns de baisse prolongée
+#    - Récupération (2023) : Modèle apprend les patterns de reprise
+#    - Consolidation (2024) : Modèle apprend les patterns de stabilisation
+#
+# 2. Éviter l'overfitting sur un régime unique :
+#    - Un modèle entraîné uniquement sur un bull market échouerait en bear market
+#    - La diversité des cycles améliore la généralisation
+#
+# 3. Volume de données suffisant pour LightGBM :
+#    - 4 ans × 365 jours × 24 heures = ~35 000 points de données par crypto
+#    - Suffisant pour des features avec windows longs (168h SMA = 1 semaine)
+#
+# 4. Disponibilité historique Binance :
+#    - Binance propose des données depuis 2017 pour BTC/ETH
+#    - 4 ans est un compromis entre volume et disponibilité pour les altcoins
+# =============================================================================
+
+# =============================================================================
+# CHOIX DE DONNÉES : Top 3 cryptos uniquement
+# =============================================================================
+# Pourquoi limiter à 3 cryptos principales ?
+#
+# 1. Performance de l'API Binance :
+#    - Limites de rate (1200 requêtes/minute pour les marchés spot)
+#    - Avec 100+ cryptos, on atteindrait rapidement la limite
+#
+# 2. Qualité des données :
+#    - Les cryptos peu échangées ont des gaps de liquidité
+#    - Les top cryptos ont des données fiables et continues
+#
+# 3. Pertinence du volume :
+#    - On filtre par volume de transactions (quoteVolume > 1M USDT/jour)
+#    - Les cryptos à faible volume sont trop volatiles et manipulables
+#
+# 4. Coûts de stockage et compute :
+#    - Neon.tech gratuit limite à 500 Mo (3 cryptos × 4 ans ≈ 200 Mo OK)
+#    - HuggingFace gratuit limite à 100 Mo par modèle (3 modèles OK)
+#    - Entraînement mensuel sur GitHub Actions (2000 minutes gratuites/mois)
+#
+# 5. Maintenance dynamique :
+#    - Le script vérifie quotidiennement le Top 3 actuel
+#    - Si une nouvelle crypto entre dans le Top 3, elle est ajoutée automatiquement
+#    - Les anciennes cryptos du Top 3 restent dans la base (données historiques)
+# =============================================================================
 
 # On ne conserve que le top 3 des paires cryptos avec au moins 4 ans d'historique.
 YEARS = 4
