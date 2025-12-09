@@ -1511,5 +1511,5 @@ def render():
             """)
         
         st.success("📚 Documentation complète du projet Crypto Trading ML")
-        st.caption("Cette documentation est générée automatiquement depuis les commentaires du code source.")
+
 
