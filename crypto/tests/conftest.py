@@ -1,20 +1,18 @@
-"""Fichier de configuration global pour les tests pytest."""
+"""
+Configuration globale pour les tests pytest du pipeline crypto ML.
+"""
 
 import pytest
+import sys
+from pathlib import Path
+
+# Ajouter le répertoire racine et scripts au PYTHONPATH
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJECT_ROOT))
+sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
 
 
 @pytest.fixture(scope="session")
-def client():
-    """
-    Fixture pour le client de test FastAPI.
-
-    L'import est fait à l'intérieur pour éviter d'imposer FastAPI/httpx
-    comme dépendance pour les tests qui n'en ont pas besoin (ex: tests Airflow).
-    """
-    try:
-        from fastapi.testclient import TestClient
-        from api.main import app
-
-        return TestClient(app)
-    except ImportError as e:
-        pytest.skip(f"Impossible d'importer le client de test FastAPI: {e}")
+def project_root():
+    """Retourne le chemin racine du projet crypto."""
+    return PROJECT_ROOT
