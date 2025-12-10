@@ -571,13 +571,17 @@ def render():
             st.markdown("""
             Le modèle ne regarde pas juste le prix, il analyse plusieurs indicateurs :
             
-            - **Log Return** : La performance de la bougie (en %).
-            - **Lags** : Les performances passées (il y a 1h, 2h, etc.).
+            - **Log Return** : La performance de la bougie (variation en %, échelle log).
+            - **Lags (1-5h)** : Les performances passées → **Features d'entrée** pour capturer le momentum.
+              - 🕐 Exemple : À 14h, `return_lag_1h` = variation à 13h, `return_lag_2h` = variation à 12h, etc.
+              - 🎯 Le modèle utilise ces 5 lags pour prédire le prix à **t+4h** (18h).
             - **RSI** : Indicateur de surachat/survente (0-100).
             - **MACD** : Indicateur de tendance et de momentum.
             - **ATR** : Mesure de la volatilité (plus c'est haut, plus ça bouge).
-            - **Dist SMA** : Distance du prix par rapport à ses moyennes mobiles (24h et 72h).
+            - **Dist SMA** : Distance du prix par rapport à ses moyennes mobiles (24h et 168h).
             - **ADX** : Force de la tendance (0 = pas de tendance, 100 = tendance très forte).
+            
+            ⚠️ **Important :** Les lags sont des **features passées** (input), pas la prédiction (output) !
             """)
 
         st.write("---")
@@ -610,6 +614,39 @@ def render():
 
                 st.write("---")
                 st.subheader("Autocorrélation des lags (corrélation roulante)")
+                
+                with st.expander("ℹ️ Comment interpréter l'autocorrélation des log returns ?"):
+                    st.markdown("""
+                    L'autocorrélation mesure si une **variation passée** influence les **variations futures**.
+                    
+                    **⚠️ Observation typique sur le marché crypto :**
+                    - L'autocorrélation est **généralement FAIBLE** (oscillant autour de **0**, entre -0.5 et +0.5)
+                    - **Pas de pattern clair** entre les différents lags (1h, 2h, 3h ressemblent)
+                    - Quelques **pics isolés** lors d'événements (news, crash)
+                    
+                    **Ce que ça signifie :**
+                    ```
+                    Autocorr ≈ 0 → Le marché crypto est relativement "efficient"
+                    → Les variations passées ne prédisent PAS systématiquement le futur
+                    → Le prix suit une "random walk" (marche aléatoire)
+                    ```
+                    
+                    **Pourquoi garder les lags alors ?**
+                    1. **Momentum temporaire** : Lors de breakouts, l'autocorrélation devient forte momentanément
+                    2. **Interactions non-linéaires** : LightGBM détecte des patterns complexes (ex: "si lag1>0 ET RSI<70 → hausse")
+                    3. **Robustesse** : Les lags complètent les indicateurs techniques (RSI, MACD qui eux ont une meilleure corrélation)
+                    
+                    **Interprétation du graphique :**
+                    - **Autocorr ≈ 0** (normal) : Marché efficient, pas de momentum persistant
+                    - **Autocorr > 0.3** (rare, pics sur le graphique) : Momentum fort → Stratégie trend following
+                    - **Autocorr < -0.2** (rare) : Mean reversion → Rebond après mouvement fort
+                    
+                    **Hiérarchie d'importance des features :**
+                    - 🥇 **RSI, MACD, ATR** (corrélation forte avec target)
+                    - 🥈 **SMA Distance, ADX, Bollinger Bands**
+                    - 🥉 **Lags 1-5h** (corrélation faible mais utile lors de momentum temporaire)
+                    """)
+                
                 lag_win = st.slider("Fenêtre de corrélation (heures)", 24, 240, 72, step=12, help="Taille de la fenêtre pour la corrélation roulante", key="ml4_lag_win")
                 try:
                     if not dff.empty:
@@ -1362,7 +1399,7 @@ def render():
             
             | Feature | Utilité | Exemple |
             |---------|---------|---------|
-            | **Lags 1-5h** | Mémoire court terme | Si ça montait les 3 dernières heures → momentum haussier |
+            | **Lags 1-5h** | Mémoire court terme (momentum) | Si ça montait les 3 dernières heures → momentum haussier |
             | **RSI** | Détecte zones extrêmes | RSI > 70 → surachat (risque correction) |
             | **MACD** | Changement de tendance | MACD croise signal → retournement |
             | **ATR** | Mesure volatilité | ATR élevé → mouvement brusque probable |
@@ -1371,6 +1408,102 @@ def render():
             | **SMA Cross** | Golden/Death Cross | MM courte > longue → bullish |
             | **ADX** | Force de tendance | ADX < 20 → marché plat (ignorer croisements) |
             | **Hour/Day** | Patterns horaires | Volume plus élevé à 14h UTC (ouverture US) |
+            
+            ---
+            
+            ### ❓ FAQ : Lags & Autocorrélation
+            
+            **Q1 : Pourquoi utiliser des lags 1-5h si on prédit à t+4h ?**
+            
+            **R :** Les lags sont des **features d'entrée** (passé), pas la prédiction (futur) !
+            
+            ```
+            ◀────────────── PASSÉ ──────────────▶ ◀── PRÉSENT ──▶ ◀────── FUTUR ──────▶
+            
+            🕐 9h    10h   11h   12h   13h     │  14h (NOW)  │      18h (t+4h)
+               ▼     ▼     ▼     ▼     ▼      │             │         ▼
+            lag_5h lag_4h lag_3h lag_2h lag_1h │             │     PRÉDICTION
+            ───────────────────────────────────┴─────────────┴───────────────
+                     FEATURES (Input X)         │             │  TARGET (Output Y)
+            
+            Le modèle apprend : "Si les 5 dernières heures (lags) montrent X pattern
+                                 → dans 4 heures (target) ce sera Y"
+            ```
+            
+            **Schéma détaillé :**
+            
+            ```
+            🕐 Moment actuel : 14h00
+            
+            📊 Features utilisées (INPUT - passé) :
+               - return_lag_1h → Variation à 13h (t-1)  ─┐
+               - return_lag_2h → Variation à 12h (t-2)   │
+               - return_lag_3h → Variation à 11h (t-3)   ├─▶ Capture le MOMENTUM
+               - return_lag_4h → Variation à 10h (t-4)   │   (tendance récente)
+               - return_lag_5h → Variation à 9h  (t-5)  ─┘
+               + RSI, MACD, ATR, etc. (calculés à 14h)
+            
+            🎯 Target (OUTPUT - futur) :
+               - Prix à 18h00 (t+4h) ou Log Return(14h→18h)
+            
+            Le modèle ML :  X (features 14h) ──▶ [LightGBM] ──▶ Y (prix 18h)
+            ```
+            
+            **Exemple concret :**
+            - Si les lags 1-5h montrent tous +2% (momentum haussier persistant)
+            - + RSI = 65 (pas de surachat)
+            - + MACD positif (tendance haussière)
+            - → Le modèle prédit : dans 4h le prix sera à +3%
+            
+            **Pourquoi pas lag_10h ou lag_20h ?**
+            - Les lags trop anciens ont une autocorrélation **faible** (< 0.1)
+            - 5 lags = compromis entre info utile et bruit
+            - Au-delà de 5h, le marché a "oublié" les mouvements passés
+            
+            ---
+            
+            **Q2 : L'autocorrélation est-elle encore utile avec les log returns ?**
+            
+            **R :** **Oui, mais elle est généralement FAIBLE sur le marché crypto !** 
+            
+            L'autocorrélation mesure si une variation passée influence les variations futures :
+            
+            | Type de données | Autocorrélation | Interprétation |
+            |----------------|-----------------|----------------|
+            | **Prix bruts** | Toujours forte (>0.99) | Peu informatif (le prix monte tendanciellement) |
+            | **Log Returns crypto** | **Faible (≈ 0 à ±0.3)** | Marché relativement **efficient** |
+            
+            **⚠️ Observation réelle :**
+            - L'autocorrélation oscille autour de **0** (entre -0.5 et +0.5)
+            - **Pas de différence claire** entre lag 1h, 2h, 3h, 4h, 5h
+            - Quelques **pics isolés** lors d'événements (news, flash crash)
+            
+            **Ce que ça signifie :**
+            ```
+            Autocorr ≈ 0 → Le marché crypto est "efficient"
+            → Les variations passées ne prédisent PAS systématiquement les variations futures
+            → Le prix suit une "random walk" (marche aléatoire)
+            ```
+            
+            **Alors pourquoi garder les lags si l'autocorr est faible ?**
+            
+            1. **Momentum temporaire** : Lors de breakouts (pics sur le graphique), l'autocorrélation devient forte momentanément
+            2. **Interactions non-linéaires** : LightGBM peut détecter des patterns complexes :
+               - Ex: "Si lag1 > 0 ET lag2 > 0 ET RSI < 70 → Hausse probable"
+            3. **Robustesse** : Les lags + indicateurs techniques (RSI, MACD) forment un ensemble redondant
+            4. **Coût faible** : 5 features supplémentaires ne ralentissent pas le modèle
+            
+            **Hiérarchie d'importance des features (estimée) :**
+            ```
+            🥇 RSI, MACD, ATR (indicateurs techniques) → Autocorr forte avec target
+            🥈 SMA Distance, ADX, Bollinger Bands
+            🥉 Lags 1-5h → Autocorr faible mais utile lors de momentum
+            ```
+            
+            **Visualisation autocorrélation (onglet DataViz) :**
+            - **Autocorr ≈ 0** (normal) → Marché efficient, variations indépendantes
+            - **Autocorr > 0.3** (rare) → Momentum persiste temporairement (trend following)
+            - **Autocorr < -0.2** (rare) → Mean reversion (rebond après mouvement fort)
             """)
         
         # === 5. MODÈLES ===

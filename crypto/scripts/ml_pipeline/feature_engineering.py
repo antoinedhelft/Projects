@@ -104,7 +104,37 @@ def build_features(df_raw: pd.DataFrame):
         df['log_return'] = np.log(df['close_price'] / df['close_price'].shift(1))
         
         # --- 2. Lags de Rendements (et non de prix) ---
-        # Est-ce que ça montait ou descendait il y a 1h, 2h, 3h ?
+        # IMPORTANT : Les lags sont des FEATURES (entrée), pas la prédiction (sortie) !
+        # 
+        # Exemple : À 14h00, pour prédire le prix à 18h00 (t+4h), on utilise :
+        #   - return_lag_1h → Variation à 13h (t-1)
+        #   - return_lag_2h → Variation à 12h (t-2)
+        #   - return_lag_3h → Variation à 11h (t-3)
+        #   - return_lag_4h → Variation à 10h (t-4)
+        #   - return_lag_5h → Variation à 9h  (t-5)
+        #
+        # Le modèle apprend : "Si les 5 dernières heures montrent X pattern → dans 4h ce sera Y"
+        # 
+        # Pourquoi 5 lags ?
+        # - Trop peu (1-2 lags) → Pas assez d'info sur le momentum
+        # - Trop (10+ lags) → Bruit, overfitting, peu de corrélation
+        # - 5 lags = Compromis optimal (couvre ~5h de momentum récent)
+        #
+        # ⚠️ RÉALITÉ : Autocorrélation FAIBLE sur le marché crypto
+        # - Observation empirique : autocorr ≈ 0 (oscillant entre -0.5 et +0.5)
+        # - Le marché crypto est relativement "efficient" (random walk)
+        # - Les lags ont une utilité LIMITÉE en moyenne
+        #
+        # Pourquoi les garder alors ?
+        # 1. Momentum temporaire : Lors de breakouts, l'autocorrélation devient forte
+        # 2. Interactions non-linéaires : LightGBM détecte des patterns (ex: lag1>0 ET RSI<70)
+        # 3. Robustesse : Les lags complètent RSI/MACD (qui eux ont une corrélation forte)
+        # 4. Coût faible : 5 features supplémentaires ne ralentissent pas l'entraînement
+        #
+        # Hiérarchie d'importance (estimée) :
+        #   🥇 RSI, MACD, ATR (corrélation forte avec target)
+        #   🥈 SMA Distance, ADX, Bollinger Bands
+        #   🥉 Lags 1-5h (corrélation faible mais utile lors de momentum)
         for lag in range(1, 6):
             df[f'return_lag_{lag}h'] = df['log_return'].shift(lag)
             # Volume relatif : Volume actuel / Volume moyen des 24 dernières heures
