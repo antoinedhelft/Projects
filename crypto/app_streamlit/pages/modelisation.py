@@ -734,8 +734,86 @@ def render():
             fig.add_trace(go.Scatter(x=dfl["timestamp"], y=dfl["close_price"], name="Close", mode="lines"))
             fig.update_layout(height=380, title=f"{sym} – Prix (derniers {months} mois)")
             st.plotly_chart(fig, use_container_width=True)
+            
             # Histogramme des rendements
             st.subheader("Distribution des rendements horaires")
+            
+            with st.expander("ℹ️ À quoi sert ce graphique ?"):
+                st.markdown("""
+                Ce graphique montre la **distribution des log returns horaires** et sert à diagnostiquer la qualité des données.
+                
+                **🔍 Qu'est-ce qu'un log return horaire ?**
+                
+                C'est la **variation du prix entre deux bougies consécutives** (heure N → heure N+1) :
+                - **Formule** : `log_return = log(Prix_t / Prix_t-1)`
+                - **Exemple** : 
+                  - Prix : 60000$ → 60600$ = log_return ≈ **+0.01** (+1%)
+                  - Prix : 60000$ → 59400$ = log_return ≈ **-0.01** (-1%)
+                
+                **📊 Que représentent les axes ?**
+                
+                - **Axe X (horizontal)** : Valeur du log return (−0.1 = −10%, 0 = 0%, +0.35 = +35%)
+                - **Axe Y (vertical)** : Nombre de fois que cette variation est apparue dans l'historique
+                
+                **Exemple concret (10 000 heures) :**
+                ```
+                3000 heures → Prix bouge de ~0% (±0.5%)        = Pic central élevé
+                2000 heures → Prix bouge de ±1 à 2%            = Côtés du pic
+                  50 heures → Prix bouge de ±5 à 10%           = Queues
+                   2 heures → Prix bouge de +35% (flash pump)  = Barre isolée à 0.35
+                ```
+                
+                **⚠️ Outliers extrêmes (>±10% comme 0.35) :**
+                
+                Si vous voyez des barres isolées à +0.35 (+35%) :
+                - ✅ **Normal si rare** (1-2 fois sur 10k heures) → Flash pump, news majeures
+                - ❌ **Problème si fréquent** (10+ fois) → Vérifier qualité API Binance
+                
+                **Comment vérifier ?** Cherchez `abs(log_return) > 0.1` dans vos données
+                
+                ---
+                
+                **📊 Les 5 utilités clés :**
+                
+                **1. Vérifier la normalité (forme en cloche)**
+                - Une distribution **gaussienne** (en cloche) confirme que les log returns sont bien normalisés
+                - Justifie l'utilisation de LightGBM qui performe mieux sur des distributions normales
+                - Si asymétrique ou multimodale → nécessite d'autres transformations
+                
+                **2. Détecter les outliers (queues de distribution)**
+                - Les extrémités montrent les mouvements extrêmes (flash crash, pump, souvent suites à des annonces : Elon Musk, guerre, etc...)
+                - Crypto typique : ±4% par heure (−0.04 à +0.04)
+                - Outliers > ±10% → Vérifier erreurs de données API Binance si elles sont nombreuses.
+                
+                **3. Valider la transformation logarithmique**
+                - La **symétrie** confirme que l'échelle log était le bon choix
+                - Sans log, la distribution des prix bruts serait asymétrique (log-normale)
+                
+                **4. Vérifier la stationnarité**
+                - Distribution **centrée sur 0** → Pas de dérive systématique (hausse/baisse continue)
+                - Distribution **décalée à droite** → Bull market prolongé (drift positif)
+                - Distribution **décalée à gauche** → Bear market prolongé (drift négatif)
+                
+                **5. Calibrer les seuils de classification**
+                - Seuil actuel : **±0.15%** (0.0015) pour séparer Baisse/Stable/Hausse
+                - Comparez avec la largeur de la distribution pour évaluer la sensibilité
+                
+                ---
+                
+                **🔍 Comment interpréter votre graphique :**
+                
+                | Observation | Signification | Action |
+                |-------------|---------------|--------|
+                | **Pic central élevé** | Le prix bouge peu la plupart du temps | Seuil 0.15% est sensible (capte petits mouvements) |
+                | **Distribution large** (±5%) | Marché volatile | Augmenter le seuil à 0.5% |
+                | **Distribution étroite** (±1%) | Marché stable | Garder seuil 0.15% |
+                | **Symétrique** | Autant de hausses que de baisses | Marché équilibré ✅ |
+                | **Asymétrique (décalée)** | Tendance systématique | Bull/Bear market en cours |
+                | **Queues épaisses** | Mouvements extrêmes fréquents | High risk/high reward |
+                | **Queues fines** | Peu de crashs/pumps | Marché calme |
+                | **Multimodale** (2 pics) | Deux régimes (bull + bear) | Modèle adaptatif recommandé |
+                """)
+            
             hist = go.Figure(data=[go.Histogram(x=dfl["returns"].dropna(), nbinsx=50)])
             hist.update_layout(height=280)
             st.plotly_chart(hist, use_container_width=True)
