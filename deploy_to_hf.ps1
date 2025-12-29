@@ -20,7 +20,12 @@ if ($status) {
 
 # 2. Creation d'une branche temporaire propre
 Write-Host ">> Creation de la version de deploiement..." -ForegroundColor Yellow
-git branch -D hf-deploy 2>$null
+
+# Suppression de l'ancienne branche si elle existe
+if (git branch --list hf-deploy) {
+    git branch -D hf-deploy
+}
+
 git checkout -b hf-deploy
 
 # 3. Retrait des fichiers lourds de l'index Git (ils restent sur votre disque !)
@@ -39,6 +44,8 @@ git push space hf-deploy:main --force
 # 6. Nettoyage et retour
 Write-Host ">> Retour sur main..." -ForegroundColor Yellow
 git checkout main
-git branch -D hf-deploy | Out-Null
+if (git branch --list hf-deploy) {
+    git branch -D hf-deploy | Out-Null
+}
 
 Write-Host ">> Deploiement termine avec succes ! Votre app sera a jour dans quelques instants." -ForegroundColor Green
