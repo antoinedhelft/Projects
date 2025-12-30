@@ -401,6 +401,19 @@ def render():
                 st.stop()
             last_row = dff.iloc[[-1]]  # DataFrame d'une ligne pour prédiction
             last_close = float(dff.iloc[-1]["close_price"])  # close de la dernière bougie observée (t)
+            
+            # --- DEBUG INFO (TEMPORAIRE) ---
+            last_ts = dff.iloc[-1]["timestamp"]
+            server_now = pd.Timestamp.now(tz='UTC')
+            db_host = DATABASE_URL.split("@")[1].split("/")[0] if "@" in DATABASE_URL else "Localhost/Unknown"
+            
+            st.info(
+                f"ℹ️ **État des données**\n\n"
+                f"- **Dernière bougie (DB)** : `{last_ts}`\n"
+                f"- **Heure Serveur (UTC)** : `{server_now.strftime('%Y-%m-%d %H:%M:%S')}`\n"
+                f"- **Base de données** : `{db_host}`"
+            )
+            # -------------------------------
 
             col_reg, col_class = st.columns(2)
 
