@@ -334,7 +334,7 @@ def get_models_and_features(symbol: str = None):
     }
 
 def render():
-    st.title("4️⃣ Modélisation et Machine Learning")
+    st.title("Modélisation et Machine Learning")
 
     # Bouton de mise à jour des données (Manuel)
     if st.button("🔄 Mettre à jour les données (Binance)"):
@@ -352,16 +352,16 @@ def render():
                 st.error(f"Impossible de lancer le script : {e}")
 
     tabs = st.tabs([
-        "4.1 Estimations & directions",
-        "4.2 Aperçu des valeurs",
-        "4.3 DataViz & Distribution",
-        "4.4 Évaluation",
+        "1 Estimations & directions",
+        "2 Aperçu des valeurs",
+        "3 DataViz & Distribution",
+        "4 Évaluation",
         "📚 Documentation du Projet"
     ])
 
 
     with tabs[0]:
-        st.header("4.1 Estimation & direction")
+        st.header("1 Estimation & direction")
         st.info("🎯 **Mission :** Assister la décision de trading à court terme")
         
         with st.expander("ℹ️ Comment lire cette page ?"):
@@ -564,7 +564,7 @@ def render():
 
 
     with tabs[1]:
-        st.header("4.2 Aperçu des valeurs 🧪")
+        st.header("2 Aperçu des valeurs 🧪")
         st.info("💡 **Objectif :** Transformer les **bougies brutes** en **variables explicatives** pour comprendre les tendances. ➡️")
         
         with st.expander("ℹ️ Comprendre les Features (Variables)"):
@@ -714,7 +714,7 @@ def render():
 
 
     with tabs[2]:
-        st.header("4.3 DataViz & Distribution")
+        st.header("3 DataViz & Distribution")
         symbols = list_symbols()
         if not symbols:
             st.warning("Aucun symbole actif en base.")
@@ -821,7 +821,7 @@ def render():
 
 
     with tabs[3]:
-        st.header("4.4 Évaluation")
+        st.header("4 Évaluation")
         md_justify(
             """
             Méthode : comparaison au naïf « persistance » (prix(t + 4h) ≈ close(t)).
