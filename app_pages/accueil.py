@@ -79,7 +79,7 @@ def render():
             "à différents niveaux de classification ATC (Anatomical Therapeutic Chemical Classification System)."
         )
         st.caption("ATC • Sécurité sociale • Data viz")
-        st.button("Ouvrir la page Médicaments", key="btn_med", on_click=_set_page, args=("Médicaments de Ville",))
+        st.button("Ouvrir la page Médicaments", key="btn_med", on_click=_set_page, args=("Coûts des Médicaments de Ville",))
 
     with c2:
         st.markdown("### 🪙 Cryptomonnaies")
@@ -97,7 +97,7 @@ def render():
             "incidences sur les tendances d'achat chez les particuliers en France."
         )
         st.caption("Pollution • Analyse • Data viz")
-        st.button("Ouvrir la page Pollution Véhicules Légers", key="btn_poll", on_click=_set_page, args=("Pollution Véhicules Légers",))
+        st.button("Ouvrir la page Pollution Véhicules Légers", key="btn_poll", on_click=_set_page, args=("Pollution des Véhicules Légers",))
 
     if st.button("🔄 Rafraîchir la page"):
         st.rerun()
