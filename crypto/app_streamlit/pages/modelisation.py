@@ -618,7 +618,10 @@ def render():
                 if not dff.empty:
                     # Colonnes disponibles après la mise à jour "stationnaire"
                     cols_to_show = [c for c in ["timestamp", "close_price", "log_return", "return_lag_1h", "rsi", "macd_diff_normalized", "atr_pct", "hour_sin", "day_of_week", "target_price"] if c in dff.columns]
-                    st.dataframe(dff.dropna().tail(100)[cols_to_show])
+                    
+                    # FIX: On ne drop pas les lignes où seul target_price est manquant (les 4 dernières heures)
+                    cols_features = [c for c in dff.columns if c != "target_price"]
+                    st.dataframe(dff.dropna(subset=cols_features).tail(100)[cols_to_show])
                 else:
                     st.info("Pas assez d'historique pour calculer les features sur la fenêtre.")
 
