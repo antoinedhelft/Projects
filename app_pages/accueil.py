@@ -35,10 +35,14 @@ def render():
     # En-tête
     col1, col2 = st.columns([1, 3])
     with col1:
-        st.image(
-            "https://github.com/antoinedhelft.png",  # Photo de profil GitHub d'Antoine
-            width=120,
-            caption="Antoine – Data engineer / Pharmacien",
+        st.markdown(
+            """
+            <div style="display: flex; flex-direction: column; align-items: center;">
+                <img src="https://github.com/antoinedhelft.png" style="border-radius: 50%; width: 170px; height: 170px; object-fit: cover;">
+                <p style="font-size: 0.8rem; color: #6b7280; margin-top: 10px; text-align: center;">Antoine – Data engineer / Pharmacien</p>
+            </div>
+            """,
+            unsafe_allow_html=True
         )
     with col2:
         st.title("Mes projets")
