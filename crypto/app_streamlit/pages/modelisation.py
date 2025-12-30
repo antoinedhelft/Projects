@@ -345,9 +345,13 @@ def render():
                 result = subprocess.run([sys.executable, str(script_path)], capture_output=True, text=True)
                 if result.returncode == 0:
                     st.success("Données mises à jour avec succès !")
+                    with st.expander("Voir les détails de la mise à jour"):
+                        st.text(result.stdout)
                     st.cache_data.clear() # Invalider le cache
                 else:
                     st.error(f"Erreur lors de la mise à jour : {result.stderr}")
+                    with st.expander("Voir les logs complets"):
+                        st.text(result.stdout)
             except Exception as e:
                 st.error(f"Impossible de lancer le script : {e}")
 
