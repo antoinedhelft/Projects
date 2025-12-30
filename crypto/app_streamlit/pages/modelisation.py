@@ -395,25 +395,18 @@ def render():
         try:
             # On charge ~1 an pour assurer assez d'historique pour les fenêtres longues (72h, RSI, etc.)
             df_all = load_candles(sym_top, years=1)
-            dff = compute_features(df_all).dropna().reset_index(drop=True)
+            
+            # FIX: Ne pas dropper les dernières lignes (target NaN) pour la prédiction
+            df_feats = compute_features(df_all)
+            # On exclut 'target_price' de la vérification des NaNs car c'est ce qu'on veut prédire pour les dernières lignes
+            cols_features = [c for c in df_feats.columns if c != "target_price"]
+            dff = df_feats.dropna(subset=cols_features).reset_index(drop=True)
+
             if dff.empty:
                 st.info("Pas assez d'historique pour calculer les features.")
                 st.stop()
             last_row = dff.iloc[[-1]]  # DataFrame d'une ligne pour prédiction
             last_close = float(dff.iloc[-1]["close_price"])  # close de la dernière bougie observée (t)
-            
-            # --- DEBUG INFO (TEMPORAIRE) ---
-            last_ts = dff.iloc[-1]["timestamp"]
-            server_now = pd.Timestamp.now(tz='UTC')
-            db_host = DATABASE_URL.split("@")[1].split("/")[0] if "@" in DATABASE_URL else "Localhost/Unknown"
-            
-            st.info(
-                f"ℹ️ **État des données**\n\n"
-                f"- **Dernière bougie (DB)** : `{last_ts}`\n"
-                f"- **Heure Serveur (UTC)** : `{server_now.strftime('%Y-%m-%d %H:%M:%S')}`\n"
-                f"- **Base de données** : `{db_host}`"
-            )
-            # -------------------------------
 
             col_reg, col_class = st.columns(2)
 

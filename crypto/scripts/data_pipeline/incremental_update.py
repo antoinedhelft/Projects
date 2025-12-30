@@ -446,7 +446,8 @@ def run_incremental_cycle():
                     db.commit()
                     log(f"{symbol}: mise à jour (+{len(candles)} bougies).")
                 else:
-                    log(f"{symbol}: aucune nouvelle bougie trouvée.")
+                    log(f"{symbol}: aucune nouvelle bougie trouvée (fetch_incremental a retourné vide).")
+                    # On ne raise pas ici pour ne pas bloquer les autres symboles, mais on loggue fort.
             else:
                 # Paire existante mais vide (Rattrapage)
                 log(f"{symbol}: existant mais vide -> Rattrapage 4 ans.")
@@ -457,9 +458,16 @@ def run_incremental_cycle():
                     db.bulk_save_objects(candles)
                     db.commit()
                     log(f"{symbol}: rattrapage terminé ({len(candles)} bougies).")
+                else:
+                    log(f"{symbol}: échec rattrapage (fetch_range a retourné vide).")
 
 def main():
-    run_incremental_cycle()
+    try:
+        run_incremental_cycle()
+    except Exception as e:
+        log(f"CRITICAL ERROR: {e}")
+        sys.exit(1) # Force failure for GitHub Actions
 
 if __name__ == "__main__":
+    import sys
     main()
