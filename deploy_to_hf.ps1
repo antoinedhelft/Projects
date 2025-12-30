@@ -26,20 +26,31 @@ if (git branch --list hf-deploy) {
     git branch -D hf-deploy
 }
 
-# --orphan cree une nouvelle branche vide d'historique, ce qui evite de trainer les vieux gros fichiers
+# --orphan cree une nouvelle branche vide d'historique
 git checkout --orphan hf-deploy
+
+# On vide l'index pour repartir de zero et bien appliquer les regles LFS
+git reset
+
+# Configuration de Git LFS pour les images (pour eviter le rejet par Hugging Face)
+Write-Host ">> Configuration de Git LFS..." -ForegroundColor Yellow
+Set-Content .gitattributes "*.jpg filter=lfs diff=lfs merge=lfs -text`n*.png filter=lfs diff=lfs merge=lfs -text"
+git add .gitattributes
+
+# On ajoute tout le reste (cela va respecter le .gitattributes et utiliser LFS pour les images)
+git add .
 
 # 3. Retrait des fichiers lourds de l'index Git (ils restent sur votre disque !)
 Write-Host ">> Nettoyage des fichiers lourds..." -ForegroundColor Yellow
 
-# Suppression des dossiers complets (cela inclut TOUS les fichiers dedans, y compris les xlsx)
+# Suppression des dossiers complets
 git rm -r --cached --ignore-unmatch Trail JUIL25-BDE-CRYPTO-main myenv2 medicines/raw_data
 
 # Suppression des fichiers specifiques ailleurs
 git rm --cached --ignore-unmatch medicines/processed/*.csv 
 git rm --cached --ignore-unmatch medicines/processed/*.pbix 
 
-# Securite : on retire explicitement tous les xlsx qui pourraient trainer ailleurs
+# Securite : on retire explicitement tous les xlsx
 git rm --cached --ignore-unmatch *.xlsx
 git rm --cached --ignore-unmatch **/*.xlsx
 
@@ -52,7 +63,7 @@ git push space hf-deploy:main --force
 
 # 6. Nettoyage et retour
 Write-Host ">> Retour sur main..." -ForegroundColor Yellow
-git checkout main
+git checkout main -f
 if (git branch --list hf-deploy) {
     git branch -D hf-deploy | Out-Null
 }
