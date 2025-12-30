@@ -18,7 +18,7 @@ if ($status) {
     exit 1
 }
 
-# 2. Creation d'une branche temporaire propre
+# 2. Creation d'une branche temporaire propre (ORPHELINE = SANS HISTORIQUE)
 Write-Host ">> Creation de la version de deploiement..." -ForegroundColor Yellow
 
 # Suppression de l'ancienne branche si elle existe
@@ -26,16 +26,22 @@ if (git branch --list hf-deploy) {
     git branch -D hf-deploy
 }
 
-git checkout -b hf-deploy
+# --orphan cree une nouvelle branche vide d'historique, ce qui evite de trainer les vieux gros fichiers
+git checkout --orphan hf-deploy
 
 # 3. Retrait des fichiers lourds de l'index Git (ils restent sur votre disque !)
 Write-Host ">> Nettoyage des fichiers lourds..." -ForegroundColor Yellow
-# On utilise --ignore-unmatch pour ne pas planter si le fichier n'est pas la
+
+# Suppression des dossiers complets (cela inclut TOUS les fichiers dedans, y compris les xlsx)
 git rm -r --cached --ignore-unmatch Trail JUIL25-BDE-CRYPTO-main myenv2 medicines/raw_data
-git rm --cached --ignore-unmatch medicines/processed/*.csv medicines/processed/*.pbix medicines/raw_data/*.xlsx
-# Retrait specifique du fichier qui bloque (meme s'il est dans raw_data, on assure le coup)
-git rm --cached --ignore-unmatch medicines/raw_data/2022_tail.xlsx
-git rm --cached --ignore-unmatch raw_data/2022_tail.xlsx
+
+# Suppression des fichiers specifiques ailleurs
+git rm --cached --ignore-unmatch medicines/processed/*.csv 
+git rm --cached --ignore-unmatch medicines/processed/*.pbix 
+
+# Securite : on retire explicitement tous les xlsx qui pourraient trainer ailleurs
+git rm --cached --ignore-unmatch *.xlsx
+git rm --cached --ignore-unmatch **/*.xlsx
 
 # 4. Commit de la version legere
 git commit -m "Deploy: Version legere pour Hugging Face" | Out-Null
