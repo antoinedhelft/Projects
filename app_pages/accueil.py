@@ -36,7 +36,7 @@ def render():
     col1, col2 = st.columns([1, 3])
     with col1:
         st.image(
-            "https://avatars.githubusercontent.com/u/9919?s=200&v=4",  # Remplacer par ma photo
+            "https://github.com/antoinedhelft.png",  # Photo de profil GitHub d'Antoine
             width=120,
             caption="Antoine – Data engineer / Pharmacien",
         )
