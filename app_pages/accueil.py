@@ -38,8 +38,8 @@ def render():
         st.markdown(
             """
             <div style="display: flex; flex-direction: column; align-items: center;">
-                <img src="https://github.com/antoinedhelft.png" style="border-radius: 50%; width: 200px; height: 200px; object-fit: cover;">
-                <p style="font-size: 0.8rem; color: #6b7280; margin-top: 20px; text-align: center;">Antoine – Data engineer / Pharmacien</p>
+                <img src="https://github.com/antoinedhelft.png" style="border-radius: 50%; width: 300px; height: 300px; object-fit: cover;">
+                <p style="font-size: 0.8rem; color: #6b7280; margin-top: 50px; text-align: center;">Antoine – Data engineer / Pharmacien</p>
             </div>
             """,
             unsafe_allow_html=True
