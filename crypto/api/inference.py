@@ -33,16 +33,22 @@ def _latest_file(glob_pattern: str):
     candidates_sorted = sorted(candidates, key=sort_key, reverse=True)
     return candidates_sorted[0]
 
-def _get_latest_reg_artifacts():
+def _get_latest_reg_artifacts(symbol: str = None):
     """Sélectionne le dernier modèle de régression et sa liste de features. Retourne (reg_model_path, reg_features_path)."""
-    reg_model = _latest_file("crypto_regressor_lgbm_*.joblib") or (MODELS_DIR / DEFAULT_REG_MODEL)
-    reg_feats = _latest_file("regressor_features_*.json") or (MODELS_DIR / "regressor_features.json")
+    pattern_model = f"crypto_regressor_lgbm_{symbol}_*.joblib" if symbol else "crypto_regressor_lgbm_*.joblib"
+    pattern_feats = f"regressor_features_{symbol}_*.json" if symbol else "regressor_features_*.json"
+    
+    reg_model = _latest_file(pattern_model) or (MODELS_DIR / DEFAULT_REG_MODEL)
+    reg_feats = _latest_file(pattern_feats) or (MODELS_DIR / "regressor_features.json")
     return reg_model, reg_feats
 
-def _get_latest_clf_artifacts():
+def _get_latest_clf_artifacts(symbol: str = None):
     """Sélectionne le dernier modèle de classification et sa liste de features. Retourne (clf_model_path, clf_features_path)."""
-    clf_model = _latest_file("crypto_classifier_lgbm_*.joblib") or (MODELS_DIR / DEFAULT_CLF_MODEL)
-    clf_feats = _latest_file("classifier_features_*.json") or (MODELS_DIR / "classifier_features.json")
+    pattern_model = f"crypto_classifier_lgbm_{symbol}_*.joblib" if symbol else "crypto_classifier_lgbm_*.joblib"
+    pattern_feats = f"classifier_features_{symbol}_*.json" if symbol else "classifier_features_*.json"
+    
+    clf_model = _latest_file(pattern_model) or (MODELS_DIR / DEFAULT_CLF_MODEL)
+    clf_feats = _latest_file(pattern_feats) or (MODELS_DIR / "classifier_features.json")
     return clf_model, clf_feats
 
 _router = APIRouter()
@@ -66,14 +72,18 @@ def load_features(path: str):
     with open(path, 'r') as f:
         return json.load(f)
 
-def get_model_paths():
+def get_model_paths(symbol: str = None):
     """Compat: conserve une version combinée pour l'endpoint /predict/{symbol} qui nécessite les deux modèles.
     Retourne (reg_model, clf_model, reg_feats, clf_feats) et vérifie l'existence des 4 artefacts.
     """
-    reg_path, reg_feat_path = _get_latest_reg_artifacts()
-    clf_path, clf_feat_path = _get_latest_clf_artifacts()
+    reg_path, reg_feat_path = _get_latest_reg_artifacts(symbol)
+    clf_path, clf_feat_path = _get_latest_clf_artifacts(symbol)
     for p in [reg_path, clf_path, reg_feat_path, clf_feat_path]:
         if not p.exists():
+            # Fallback: si pas de modèle spécifique, on essaie le générique
+            if symbol:
+                print(f"Modèle spécifique pour {symbol} non trouvé, tentative avec modèle générique...")
+                return get_model_paths(symbol=None)
             raise FileNotFoundError(f"Required file not found: {p}")
     return reg_path, clf_path, reg_feat_path, clf_feat_path
 
@@ -82,7 +92,7 @@ def predict_symbol(symbol: str):
     """Prédiction automatique basée sur les dernières données du symbole"""
     try:
         # Charger les modèles et caractéristiques
-        reg_path, clf_path, reg_feat_path, clf_feat_path = get_model_paths()
+        reg_path, clf_path, reg_feat_path, clf_feat_path = get_model_paths(symbol)
         
         reg_model = load_model(str(reg_path))
         clf_model = load_model(str(clf_path))
