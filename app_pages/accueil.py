@@ -38,16 +38,17 @@ def render():
         st.image(
             "https://avatars.githubusercontent.com/u/9919?s=200&v=4",  # Remplacer par ma photo
             width=120,
-            caption="Antoine – Pharmacien / Data Engineer",
+            caption="Antoine – Data engineer / Pharmacien",
         )
     with col2:
         st.title("Mes projets")
         st.header("Bienvenue sur mon portfolio.")
         st.markdown(
             """
-            Bonjour, moi c’est **Antoine**, Pharmacien / **Data Engineer**.  
-            J’ai troqué la blouse blanche pour le code et les données, avec la même rigueur scientifique.  
-            Parcourez une sélection de mes projets personnels.
+            Bonjour, moi c’est **Antoine**, **Data engineer** / Pharmacien.  
+            Je me suis aperçu dans mon métier que les données étaient souvent mal / peu utilisées ou même pas forcément récupérées. 
+            C'est pourquoi, j’ai troqué la blouse blanche pour le code et les données, avec la même rigueur scientifique, afin de participer à la transformation digitale du secteur de la santé.
+            N'hésitez pas à parcourir mes projets personnels.
             """,
         )
         st.markdown("<span class='pill'>Python</span><span class='pill'>SQL / NoSQL</span><span class='pill'>Machine Learning</span><span class='pill'>Docker</span><span class='pill'>Airflow</span><span class='pill'>Power BI</span>", unsafe_allow_html=True)
@@ -82,7 +83,7 @@ def render():
             "Création d'un bot permettant la prédiction de la valeur des cryptomonnaies "
             "à court terme (4h) et des probabilités de hausse, baisse ou stagnation."
         )
-        st.caption("Cryptomonnaies • Prédiction • Machine Learning")
+        st.caption("Cryptomonnaies • ETL • Machine Learning")
         st.button("Ouvrir la page Cryptomonnaies", key="btn_crypto", on_click=_set_page, args=("Bot Cryptomonnaies",))
 
     with c3:
@@ -91,7 +92,7 @@ def render():
             "Analyses des émissions polluantes des Véhicules Légers (VL) et de leurs "
             "incidences sur les tendances d'achat chez les particuliers en France."
         )
-        st.caption("Pollution • Véhicules Légers • Data viz")
+        st.caption("Pollution • Analyse • Data viz")
         st.button("Ouvrir la page Pollution Véhicules Légers", key="btn_poll", on_click=_set_page, args=("Pollution Véhicules Légers",))
 
     if st.button("🔄 Rafraîchir la page"):
