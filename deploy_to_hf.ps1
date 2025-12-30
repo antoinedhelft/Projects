@@ -32,7 +32,7 @@ git checkout -b hf-deploy
 Write-Host ">> Nettoyage des fichiers lourds..." -ForegroundColor Yellow
 # On utilise --ignore-unmatch pour ne pas planter si le fichier n'est pas la
 git rm -r --cached --ignore-unmatch Trail JUIL25-BDE-CRYPTO-main myenv2 medicines/raw_data
-git rm --cached --ignore-unmatch medicines/processed/*.csv medicines/processed/*.pbix
+git rm --cached --ignore-unmatch medicines/processed/*.csv medicines/processed/*.pbix medicines/raw_data/*.xlsx
 # Retrait specifique du fichier qui bloque (meme s'il est dans raw_data, on assure le coup)
 git rm --cached --ignore-unmatch medicines/raw_data/2022_tail.xlsx
 git rm --cached --ignore-unmatch raw_data/2022_tail.xlsx
