@@ -44,11 +44,12 @@ git add .
 Write-Host ">> Nettoyage des fichiers lourds..." -ForegroundColor Yellow
 
 # Suppression des dossiers complets
-git rm -r --cached --ignore-unmatch Trail JUIL25-BDE-CRYPTO-main myenv2 medicines/raw_data
+# Note: 'processed' ici fait reference au dossier a la racine du projet (doublons), PAS a 'medicines/processed'
+git rm -r --cached --ignore-unmatch Trail JUIL25-BDE-CRYPTO-main myenv2 medicines/raw_data processed
 
-# Suppression des fichiers specifiques ailleurs
-git rm --cached --ignore-unmatch medicines/processed/*.csv 
-git rm --cached --ignore-unmatch medicines/processed/*.pbix 
+# Suppression des fichiers specifiques ailleurs (on utilise des quotes pour que Git gere le glob)
+git rm --cached --ignore-unmatch 'medicines/processed/*.csv'
+git rm --cached --ignore-unmatch 'medicines/processed/*.pbix'
 
 # Securite : on retire explicitement tous les xlsx
 git rm --cached --ignore-unmatch *.xlsx
