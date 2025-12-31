@@ -37,18 +37,30 @@ PAGES = {
     #"Trail": render_trail
 }
 
+# --- Gestion de l'URL (Deep Linking) ---
+# 1. Initialiser la session_state depuis l'URL si c'est la première visite
+if "selected_page" not in st.session_state:
+    try:
+        # Récupère le paramètre 'page' de l'URL
+        query_params = st.query_params
+        # st.query_params peut retourner une string ou None
+        target_page = query_params.get("page")
+        
+        if target_page in PAGES:
+            st.session_state["selected_page"] = target_page
+        else:
+            st.session_state["selected_page"] = "Accueil"
+    except Exception:
+        st.session_state["selected_page"] = "Accueil"
+
+# 2. Widget de navigation (pilote la session_state)
 selection = st.sidebar.radio("Aller à", list(PAGES.keys()), index=0, key="selected_page")
 
-# Conserver la sélection dans l’URL si elle est prise en charge (au mieux, sans erreur fatale)
-# try:
-#     # Newer Streamlit versions
-#     st.query_params["page"] = selection
-# except Exception:
-#     try:
-#         # Backward-compatible API
-#         st.experimental_set_query_params(page=selection)
-#     except Exception:
-#         pass
+# 3. Mettre à jour l'URL en fonction de la sélection actuelle
+try:
+    st.query_params["page"] = selection
+except Exception:
+    pass
 
 # Render selected page
 PAGES[selection]()
