@@ -2,7 +2,7 @@ name: Hourly Data Update
 
 on:
   schedule:
-    - cron: '*/15 * * * *' # run tous les 15 minutes
+    - cron: '0 * * * *' # run tous les heures
   workflow_dispatch: # Permet de lancer manuellement depuis github
 
 jobs:
