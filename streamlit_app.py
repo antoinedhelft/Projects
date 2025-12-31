@@ -46,8 +46,21 @@ if "selected_page" not in st.session_state:
         # st.query_params peut retourner une string ou None
         target_page = query_params.get("page")
         
-        if target_page in PAGES:
-            st.session_state["selected_page"] = target_page
+        # Debug (visible en sidebar pour comprendre ce qui se passe)
+        # st.sidebar.caption(f"Debug URL: {target_page}")
+
+        if target_page:
+            # Gestion robuste : 
+            # 1. Remplace '+' par espace (encodage URL standard)
+            # 2. Remplace '_' par espace (convention plus lisible pour LinkedIn/partage)
+            target_page_clean = target_page.replace("+", " ").replace("_", " ")
+            
+            if target_page_clean in PAGES:
+                st.session_state["selected_page"] = target_page_clean
+            elif target_page in PAGES:
+                st.session_state["selected_page"] = target_page
+            else:
+                st.session_state["selected_page"] = "Accueil"
         else:
             st.session_state["selected_page"] = "Accueil"
     except Exception:
