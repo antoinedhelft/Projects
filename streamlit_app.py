@@ -71,7 +71,8 @@ selection = st.sidebar.radio("Aller à", list(PAGES.keys()), index=0, key="selec
 
 # 3. Mettre à jour l'URL en fonction de la sélection actuelle
 try:
-    st.query_params["page"] = selection
+    # On met des tirets du bas dans l'URL pour que ce soit propre sur LinkedIn
+    st.query_params["page"] = selection.replace(" ", "_")
 except Exception:
     pass
 
