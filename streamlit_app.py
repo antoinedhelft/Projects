@@ -48,6 +48,9 @@ if "selected_page" not in st.session_state:
         
         # Debug (visible en sidebar pour comprendre ce qui se passe)
         # st.sidebar.caption(f"Debug URL: {target_page}")
+        st.sidebar.warning(f"DEBUG INFO:")
+        st.sidebar.text(f"Params: {dict(query_params)}")
+        st.sidebar.text(f"Raw Page: {target_page}")
 
         if target_page:
             # Gestion robuste : 
