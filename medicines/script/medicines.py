@@ -8,12 +8,41 @@ raw_data_dir = current_dir.parent / "raw_data"
 processed_dir = current_dir.parent / "processed"
 
 class MedicinesDFCleaner:
+    """
+    Classe pour nettoyer et traiter les données de médicaments de l'AMELI.
+    
+    Cette classe permet de fusionner, nettoyer et transformer les données de 
+    remboursement de médicaments issues de fichiers Excel annuels, avec une 
+    agrégation par niveau ATC (Anatomical Therapeutic Chemical).
+    
+    Attributes:
+        years (list): Liste des années à traiter (ex: [2021, 2022, 2023, 2024])
+        base_path (Path): Chemin vers le répertoire contenant les fichiers bruts
+    """
+    
     def __init__(self, years, base_path):
+        """
+        Initialise le nettoyeur de données.
+        
+        Args:
+            years (list): Liste des années à traiter
+            base_path (Path): Chemin vers les données brutes
+        """
         self.years = years
         self.base_path = base_path
 
     @staticmethod
     def round_number(df, decimals=2):
+        """
+        Arrondit toutes les colonnes numériques du DataFrame.
+        
+        Args:
+            df (pd.DataFrame): DataFrame à traiter
+            decimals (int): Nombre de décimales (défaut: 2)
+            
+        Returns:
+            pd.DataFrame: DataFrame avec valeurs arrondies
+        """
         print("Rounding numeric columns")
         numeric_cols = df.select_dtypes(include='number').columns
         for col in numeric_cols:
@@ -22,12 +51,30 @@ class MedicinesDFCleaner:
 
     @staticmethod
     def replace_column_name(df):
+        """
+        Remplace les espaces par des underscores dans les noms de colonnes.
+        
+        Args:
+            df (pd.DataFrame): DataFrame à traiter
+            
+        Returns:
+            pd.DataFrame: DataFrame avec noms de colonnes nettoyés
+        """
         print("Cleaning column names")
         df.columns = [col.replace(' ', '_') for col in df.columns]
         return df
 
     @staticmethod
     def drop_columns(df):
+        """
+        Supprime les colonnes dupliquées après fusion (suffixe '_y').
+        
+        Args:
+            df (pd.DataFrame): DataFrame à traiter
+            
+        Returns:
+            pd.DataFrame: DataFrame sans colonnes redondantes
+        """
         print("Removed unnecessary columns")
         col_to_drop = ['Code_ATC2_y', 'Libellé_ATC2_y', 'Taux_de_remboursement_y']
         df.drop(columns=col_to_drop, inplace=True, errors='ignore')
@@ -35,6 +82,16 @@ class MedicinesDFCleaner:
 
     @staticmethod
     def rename_column(df, suffix):
+        """
+        Renomme les colonnes après fusion pour supprimer le suffixe '_x'.
+        
+        Args:
+            df (pd.DataFrame): DataFrame à traiter
+            suffix (str): Niveau ATC (atc2, atc3, atc4, atc5)
+            
+        Returns:
+            pd.DataFrame: DataFrame avec colonnes renommées
+        """
         print(f"Renaming columns {suffix.upper()}...")
 
         col_to_rename = {
@@ -47,6 +104,12 @@ class MedicinesDFCleaner:
 
     @staticmethod
     def remove_end_columns(dfs):
+        """
+        Nettoie les suffixes '_ATC2' dans les noms de colonnes.
+        
+        Args:
+            dfs (list): Liste de DataFrames à traiter
+        """
         print("Cleaning suffixed column names '_ATC2'...")
         for df in dfs:
             columns_to_rename = {}
@@ -58,6 +121,18 @@ class MedicinesDFCleaner:
 
     @staticmethod
     def ajouter_colonne_mois(dataframe):
+        """
+        Transforme les données du format wide au format long avec ajout d'une colonne date.
+        
+        Extrait les dates et types de données (base de remboursement, nombre de boîtes, 
+        montant remboursé) des noms de colonnes pour créer un format tabulaire.
+        
+        Args:
+            dataframe (list): Liste de DataFrames à transformer
+            
+        Returns:
+            pd.DataFrame: DataFrame concaténé au format long
+        """
         all_data = []
 
         for dfind in dataframe:
@@ -78,7 +153,25 @@ class MedicinesDFCleaner:
         return pd.concat(all_data, ignore_index=True)
 
     def filter_atc_by_length(self, df, suffix):
-    
+        """
+        Filtre les codes ATC selon la longueur attendue pour chaque niveau.
+        
+        Les codes ATC ont des longueurs spécifiques selon le niveau:
+        - ATC2: 3 caractères
+        - ATC3: 4 caractères
+        - ATC4: 5 caractères
+        - ATC5: 7 caractères
+        
+        Args:
+            df (pd.DataFrame): DataFrame à filtrer
+            suffix (str): Niveau ATC (atc2, atc3, atc4, atc5)
+            
+        Returns:
+            pd.DataFrame: DataFrame filtré
+            
+        Raises:
+            ValueError: Si le suffix n'est pas reconnu
+        """
         expected_length = {
             "atc2": 3,
             "atc3": 4,
@@ -86,10 +179,10 @@ class MedicinesDFCleaner:
             "atc5": 7
         }
 
-    # Vérification que le suffixe est valide
+        # Vérification que le suffixe est valide
         valid_len = expected_length.get(suffix.lower())
         if valid_len is None:
-            raise ValueError(f"Suffx '{suffix}' non reconnu (doit être 'atc2', 'atc3', 'atc4', ou 'atc5').")
+            raise ValueError(f"Suffix '{suffix}' non reconnu (doit être 'atc2', 'atc3', 'atc4', ou 'atc5').")
 
     # Définir le nom de la colonne à partir du suffixe
         column_name = f"Code_{suffix.upper()}"
@@ -101,10 +194,32 @@ class MedicinesDFCleaner:
 
     @staticmethod
     def drop_nan(df):
+        """
+        Supprime les lignes sans date ou valeur valide.
+        
+        Args:
+            df (pd.DataFrame): DataFrame à nettoyer
+            
+        Returns:
+            pd.DataFrame: DataFrame sans valeurs manquantes critiques
+        """
         print("Removing rows without value or date...")
         return df.dropna(subset=['date', 'valeur'])
 
     def run(self, suffixes=None):
+        """
+        Exécute le pipeline complet de nettoyage et transformation des données.
+        
+        Traite les fichiers Excel par année et par niveau ATC, fusionne les données,
+        applique tous les nettoyages, et retourne des DataFrames pivotés prêts pour l'export.
+        
+        Args:
+            suffixes (list, optional): Liste des niveaux ATC à traiter. 
+                                      Par défaut: ["atc2"]
+                                      
+        Returns:
+            dict: Dictionnaire {suffix: DataFrame} contenant les données finales
+        """
         if suffixes is None:
             suffixes = ["atc2"]
 
