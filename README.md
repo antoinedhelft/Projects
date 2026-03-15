@@ -1,13 +1,3 @@
----
-title: Portfolio Dashboard
-emoji: 📊
-colorFrom: blue
-colorTo: indigo
-sdk: docker
-app_port: 7860
-pinned: false
----
-
 ## 👋 Salut, moi c’est Antoine !
 
 Pharmacien de formation, j’ai choisi de me reconvertir dans la **data engineering**. Aujourd’hui, j’utilise des outils comme **Python**, **SQL**, **Snowflake**, **DBT**, **PySpark** et **Power BI** pour explorer, visualiser et valoriser les données.
