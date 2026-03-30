@@ -22,20 +22,30 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Importations différées pour éviter les problèmes de boucle si Streamlit surveille les fichiers
-from app_pages.accueil import render as render_accueil  # type: ignore
-from app_pages.medicaments import render as render_medicaments  # type: ignore
-from app_pages.crypto import render as render_crypto  # type: ignore
-from app_pages.car_pollution import render as render_car_pollution  # type: ignore
-#from app_pages.trail import render as render_trail  # type: ignore
-
+# Dictionnaire des pages (imports différés - seront chargés à la demande)
 PAGES = {
-    "Accueil": render_accueil,
-    "Coûts des Médicaments de Ville": render_medicaments,
-    "Bot Cryptomonnaies": render_crypto,
-    "Pollution des Véhicules Légers": render_car_pollution,
-    #"Trail": render_trail
+    "Accueil": None,
+    "Coûts des Médicaments de Ville": None,
+    "Bot Cryptomonnaies": None,
+    "Pollution des Véhicules Légers": None,
 }
+
+def get_page_render_function(page_name: str):
+    """Charge la fonction render d'une page à la demande (lazy loading)."""
+    if page_name == "Accueil":
+        from app_pages.accueil import render
+        return render
+    elif page_name == "Coûts des Médicaments de Ville":
+        from app_pages.medicaments import render
+        return render
+    elif page_name == "Bot Cryptomonnaies":
+        from app_pages.crypto import render
+        return render
+    elif page_name == "Pollution des Véhicules Légers":
+        from app_pages.car_pollution import render
+        return render
+    else:
+        return None
 
 # --- Gestion de l'URL (Deep Linking) ---
 # 1. Initialiser la session_state depuis l'URL si c'est la première visite
@@ -76,5 +86,14 @@ try:
 except Exception:
     pass
 
-# Render selected page
-PAGES[selection]()
+# Charger et rendre la page sélectionnée (lazy loading)
+try:
+    render_function = get_page_render_function(selection)
+    if render_function:
+        render_function()
+    else:
+        st.error(f"Page '{selection}' non trouvée")
+except Exception as e:
+    st.error(f"Erreur lors du chargement de la page '{selection}'")
+    with st.expander("Détails de l'erreur"):
+        st.exception(e)

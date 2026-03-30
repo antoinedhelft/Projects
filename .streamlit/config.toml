@@ -4,11 +4,10 @@ address = "0.0.0.0"
 headless = true
 enableCORS = false
 enableXsrfProtection = false
+baseUrlPath = ""
 
 [browser]
 gatherUsageStats = false
-serverAddress = "0.0.0.0"
-serverPort = 7860
 
 [theme]
 primaryColor = "#3b82f6"
