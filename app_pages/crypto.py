@@ -22,7 +22,7 @@ if str(CRYPTO_ROOT) not in sys.path:
 # Import des pages du module crypto
 # On utilise des try/except pour éviter de casser toute l'app si un import échoue
 try:
-    from app_streamlit.pages import modelisation
+    from crypto.app_streamlit.pages import modelisation
     modelisation_error = None
 except ImportError as e:
     modelisation = None
