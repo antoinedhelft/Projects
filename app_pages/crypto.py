@@ -19,19 +19,18 @@ if env_file.exists():
 if str(CRYPTO_ROOT) not in sys.path:
     sys.path.append(str(CRYPTO_ROOT))
 
-# Import des pages du module crypto
-# On utilise des try/except pour éviter de casser toute l'app si un import échoue
-try:
-    from crypto.app_streamlit.pages import modelisation
-    modelisation_error = None
-except ImportError as e:
-    modelisation = None
-    modelisation_error = str(e)
-except Exception as e:
-    modelisation = None
-    modelisation_error = f"Erreur inattendue: {str(e)}"
-
 def render():
+    # Import des pages du module crypto - LAZY LOADING
+    # L'import est fait ici pour éviter de bloquer le démarrage de l'app
+    try:
+        from crypto.app_streamlit.pages import modelisation
+        modelisation_error = None
+    except ImportError as e:
+        modelisation = None
+        modelisation_error = str(e)
+    except Exception as e:
+        modelisation = None
+        modelisation_error = f"Erreur inattendue: {str(e)}"
     if modelisation is None:
         st.error("⚠️ Le module Crypto n'a pas pu être chargé correctement.")
         if modelisation_error:
