@@ -17,16 +17,6 @@ import ta
 
 # st.set_page_config(page_title="4 - Modélisation & Machine Learning", layout="wide")
 
-# Global CSS helpers (text justification, etc.)
-st.markdown(
-    """
-    <style>
-    .justify { text-align: justify; white-space: pre-line;}
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
 def md_justify(text: str):
     """Render a markdown paragraph with justified alignment."""
     st.markdown(f'<div class="justify">{text}</div>', unsafe_allow_html=True)
@@ -334,6 +324,16 @@ def get_models_and_features(symbol: str = None):
     }
 
 def render():
+    # Appliquer le CSS pour la justification du texte
+    st.markdown(
+        """
+        <style>
+        .justify { text-align: justify; white-space: pre-line;}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+    
     st.title("Modélisation et Machine Learning")
 
     # Bouton de mise à jour des données (Manuel)

@@ -1,3 +1,5 @@
 .gitconfig
 .python-version
 .env
+*.pyc
+__pycache__/
