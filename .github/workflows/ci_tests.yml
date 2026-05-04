@@ -63,4 +63,7 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}/crypto
           DATABASE_URL_TEST: ${{ secrets.DATABASE_URL_TEST }}
+          # DATABASE_URL pointe vers la BDD de test (pas la prod)
+          # car feature_builder.py le lit directement via os.getenv("DATABASE_URL")
+          DATABASE_URL: ${{ secrets.DATABASE_URL_TEST }}
         run: pytest crypto/tests/ -m "integration and not monitoring" --tb=short -v

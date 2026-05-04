@@ -17,7 +17,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
 
-# En CI : DATABASE_URL est injectée depuis le secret DATABASE_URL_TEST (branche test Neon).
+# En CI : DATABASE_URL_TEST est injectée depuis le secret GitHub (branche test Neon).
 # En local : définir DATABASE_URL_TEST dans le .env. Sans elle, les tests sont skippés.
 DATABASE_URL = os.getenv("DATABASE_URL_TEST")
 
