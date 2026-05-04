@@ -1,0 +1,66 @@
+name: CI - Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+      - '**'  # Toutes les branches : feedback immédiat à chaque push
+
+jobs:
+  unit-tests:
+    name: Tests unitaires
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r crypto/requirements.txt
+
+      - name: Run unit tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}/crypto
+        run: pytest crypto/tests/ -m unitaire --tb=short -v
+
+  integration-tests:
+    name: Tests d'intégration (Neon.tech)
+    runs-on: ubuntu-latest
+    needs: unit-tests  # Lance uniquement si les tests unitaires passent
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r crypto/requirements.txt
+
+      - name: Vérifier que DATABASE_URL_TEST est configuré
+        run: |
+          if [ -z "${{ secrets.DATABASE_URL_TEST }}" ]; then
+            echo "❌ Le secret DATABASE_URL_TEST n'est pas configuré dans GitHub Secrets."
+            exit 1
+          fi
+
+      - name: Run integration tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}/crypto
+          DATABASE_URL_TEST: ${{ secrets.DATABASE_URL_TEST }}
+        run: pytest crypto/tests/ -m "integration and not monitoring" --tb=short -v

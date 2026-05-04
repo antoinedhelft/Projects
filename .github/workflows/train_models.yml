@@ -32,3 +32,8 @@ jobs:
         PYTHONPATH: ${{ github.workspace }}/crypto
       run: |
         python crypto/scripts/ml_pipeline/train_optimized.py
+      - name: Run non-regression tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}/crypto
+        run: pytest crypto/tests/ -m nonregression --tb=short -v
+        # Si ce step échoue, le job échoue → les modèles ne sont pas déployés.
