@@ -144,14 +144,43 @@ def main():
 
             # Entraînement Régresseur
             print(f"[DEBUG] {sym} - Entraînement régresseur...")
-            train_regressor(df_sym, features_reg_json, model_reg_path, train_mask=train_mask)
-            
+            reg_result = train_regressor(df_sym, features_reg_json, model_reg_path, train_mask=train_mask)
+
             # Entraînement Classificateur
             print(f"[DEBUG] {sym} - Entraînement classificateur...")
-            train_classifier(df_sym, features_clf_json, model_clf_path, train_mask=train_mask)
-            
+            clf_result = train_classifier(df_sym, features_clf_json, model_clf_path, train_mask=train_mask)
+
+            # Backtest sur les prédictions Out-Of-Sample du classificateur
+            CLASS_MAP = {0: 'Sell', 1: 'Hold', 2: 'Buy'}
+            signals = [CLASS_MAP[p] for p in clf_result["y_pred_test"]]
+            df_test_bt = df_sym.loc[clf_result["test_index"], ["close_price"]].copy()
+            backtest_result = backtest_classification(df_test_bt, signals)
+
+            # Sauvegarde des métriques (utilisées par les tests de non-régression)
+            metrics = {
+                "symbol": sym,
+                "timestamp": timestamp,
+                "classifier": {
+                    "f1_weighted": clf_result["report"]["weighted avg"]["f1-score"],
+                    "accuracy": clf_result["report"]["accuracy"],
+                },
+                "regressor": {
+                    "mae": reg_result["mae"],
+                    "r2": reg_result["r2"],
+                },
+                "backtest": {
+                    "strategy_return_pct": backtest_result["strategy_return_pct"],
+                    "buy_hold_return_pct": backtest_result["buy_hold_return_pct"],
+                },
+            }
+            metrics_path = ALGO_DIR / f"metrics_{sym}_{timestamp}.json"
+            with open(str(metrics_path), "w") as f:
+                json.dump(metrics, f, indent=2)
+            print(f"[INFO] {sym} - Métriques sauvées: {metrics_path}")
+            print(f"[INFO] {sym} - F1={metrics['classifier']['f1_weighted']:.3f} | MAE={metrics['regressor']['mae']:.4f} | Backtest={metrics['backtest']['strategy_return_pct']:.1f}%")
+
             # Ajout aux fichiers à uploader
-            files_to_upload.extend([model_reg_path, model_clf_path, features_reg_json, features_clf_json])
+            files_to_upload.extend([model_reg_path, model_clf_path, features_reg_json, features_clf_json, metrics_path])
 
         print("\n[DEBUG] Training terminé pour tous les symboles!")
         

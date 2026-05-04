@@ -76,7 +76,7 @@ def test_feature_engineering_produces_correct_columns():
     expected_features = [
         'log_return',
         'return_lag_1h', 'return_lag_2h', 'return_lag_3h', 'return_lag_4h', 'return_lag_5h',
-        'vol_relative_lag_1h', 'vol_relative_lag_2h',
+        'vol_relative_lag_1h', 'vol_relative_lag_2h', 'vol_relative_lag_3h', 'vol_relative_lag_4h', 'vol_relative_lag_5h',
         'rsi',
         'macd_diff_normalized',
         'atr_pct',

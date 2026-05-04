@@ -29,3 +29,10 @@ jobs:
           HF_REPO_ID: ${{ secrets.HF_REPO_ID }}
           PYTHONPATH: .
         run: python scripts/ml_pipeline/pipeline_train.py
+
+      - name: Run non-regression tests
+        env:
+          PYTHONPATH: .
+        run: pytest -m nonregression --tb=short -v
+        # Si ce step échoue, le step suivant (upload HF) ne s'exécute pas.
+        # Les modèles sous-performants ne sont donc jamais déployés.
