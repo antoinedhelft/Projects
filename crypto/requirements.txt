@@ -7,3 +7,7 @@
 # Outils supplémentaires
 python-dotenv
 huggingface_hub
+
+# Tests
+pytest
+numpy
