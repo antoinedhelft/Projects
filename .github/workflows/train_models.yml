@@ -30,10 +30,10 @@ jobs:
         HF_TOKEN: ${{ secrets.HF_TOKEN }}
         HF_REPO_ID: ${{ secrets.HF_REPO_ID }}
         PYTHONPATH: ${{ github.workspace }}/crypto
-      run: |
-        python crypto/scripts/ml_pipeline/train_optimized.py
-      - name: Run non-regression tests
-        env:
-          PYTHONPATH: ${{ github.workspace }}/crypto
-        run: pytest crypto/tests/ -m nonregression --tb=short -v
-        # Si ce step échoue, le job échoue → les modèles ne sont pas déployés.
+      run: python crypto/scripts/ml_pipeline/train_optimized.py
+
+    - name: Run non-regression tests
+      env:
+        PYTHONPATH: ${{ github.workspace }}/crypto
+      # Si ce step échoue, le job échoue → les modèles ne sont pas déployés.
+      run: pytest crypto/tests/ -m nonregression --tb=short -v
