@@ -1,18 +1,17 @@
-FROM python:3.10-slim
+FROM python:3.10
 
-WORKDIR /app
+WORKDIR /code
 
-# Installation des dépendances système manquantes (libgomp1 pour LightGBM)
-RUN apt-get update && apt-get install -y \
-    libgomp1 \
-    && rm -rf /var/lib/apt/lists/*
+# Installer libgomp1 requis par LightGBM
+RUN apt-get update && apt-get install -y libgomp1 && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+COPY requirements.txt /code/requirements.txt
 
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 
-COPY . .
+COPY . /code
 
 EXPOSE 7860
 
-CMD ["streamlit", "run", "streamlit_app.py", "--server.port", "7860", "--server.address", "0.0.0.0", "--server.fileWatcherType", "none", "--browser.gatherUsageStats", "false"]
+CMD ["streamlit", "run", "streamlit_app.py", "--server.port=7860", "--server.address=0.0.0.0"]
+
