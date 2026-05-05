@@ -1,0 +1,68 @@
+name: CD - Deploy to Hugging Face Spaces
+
+# Déclenché uniquement quand le CI passe sur main (bonne pratique : on ne déploie jamais du code non testé)
+on:
+  workflow_run:
+    workflows: ["CI - Tests"]
+    branches: [main]
+    types: [completed]
+  # Possibilité de déclencher manuellement depuis l'onglet Actions de GitHub
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Push to HF Space
+    runs-on: ubuntu-latest
+    # On ne déploie que si le CI a réussi (ou si déclenchement manuel)
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          lfs: true  # Nécessaire pour récupérer les fichiers Git LFS
+
+      - name: Configure Git identity & LFS
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git lfs install
+
+      - name: Set .gitattributes for LFS images
+        run: |
+          printf '*.jpg filter=lfs diff=lfs merge=lfs -text\n*.png filter=lfs diff=lfs merge=lfs -text\n' > .gitattributes
+
+      - name: Add HF Space remote (token via secret)
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          # vars.HF_SPACE_ID doit être défini dans Settings > Variables (ex: AntoineDH/portfolio-dashboard)
+          git remote add space "https://user:${HF_TOKEN}@huggingface.co/spaces/${{ vars.HF_SPACE_ID }}"
+
+      - name: Build lightweight deploy branch & push
+        run: |
+          # Branche orpheline = sans historique GitHub (identique au script PowerShell)
+          git checkout --orphan hf-deploy
+          git reset
+
+          git add .gitattributes
+          git add .
+
+          # Suppression des dossiers lourds (venvs, données brutes, doublons)
+          git rm -r --cached --ignore-unmatch \
+            Trail \
+            JUIL25-BDE-CRYPTO-main \
+            myenv2 \
+            medicines/raw_data \
+            processed
+
+          # Suppression de fichiers de données spécifiques
+          git rm --cached --ignore-unmatch \
+            'medicines/processed/*.csv' \
+            'medicines/processed/*.pbix'
+
+          # Suppression de tous les .xlsx récursivement
+          git ls-files | grep -E '\.xlsx$' | xargs -r git rm --cached
+
+          git commit -m "Deploy: Version legere pour Hugging Face"
+          git push space hf-deploy:main --force
