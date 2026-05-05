@@ -35,21 +35,8 @@ jobs:
       - name: Add HF Space remote (token via secret)
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_REPO_ID: ${{ secrets.HF_REPO_ID }}
         run: |
-          # HF_REPO_ID doit être au format : username/nom-du-space (ex: AntoineDH/dashboard)
-          if [ -z "${HF_REPO_ID}" ]; then
-            echo "::error::La variable HF_REPO_ID n'est pas définie."
-            echo "::error::Aller dans : GitHub > Settings > Secrets and variables > Actions > Variables"
-            echo "::error::Créer une variable nommée HF_REPO_ID avec la valeur : username/nom-du-space"
-            exit 1
-          fi
-          if [ -z "${HF_TOKEN}" ]; then
-            echo "::error::Le secret HF_TOKEN n'est pas défini."
-            echo "::error::Aller dans : GitHub > Settings > Secrets and variables > Actions > Secrets"
-            exit 1
-          fi
-          git remote add space "https://user:${HF_TOKEN}@huggingface.co/spaces/${HF_REPO_ID}"
+          git remote add space "https://user:${HF_TOKEN}@huggingface.co/spaces/Antoinedhelft/portfolio"
 
       - name: Build lightweight deploy branch & push
         run: |
