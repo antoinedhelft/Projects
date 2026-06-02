@@ -1,4 +1,4 @@
-# Script de deploiement vers Hugging Face
+# Script de deploiement vers Hugging Face manuellement
 # Usage: .\deploy_to_hf.ps1
 
 $ErrorActionPreference = "Stop"

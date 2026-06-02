@@ -35,5 +35,7 @@ jobs:
     - name: Run non-regression tests
       env:
         PYTHONPATH: ${{ github.workspace }}/crypto
+        HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        HF_REPO_ID: ${{ secrets.HF_REPO_ID }}
       # Si ce step échoue, le job échoue → les modèles ne sont pas déployés.
       run: pytest crypto/tests/ -m nonregression --tb=short -v
